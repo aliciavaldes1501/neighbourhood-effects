@@ -76,3 +76,14 @@ mplants_dbf[, 7:21][is.na(mplants_dbf[, 7:21])] <- -9999
 
 write.dbf(mplants_dbf, "./gis/tables/mplants.dbf", factor2char = TRUE, max_nchar = 250)
 
+#Make phen numeric
+
+mplants$phenn <- vector("character",length(mplants$phen))
+mplants$phenn[ mplants$phen=="a"] <- 1
+mplants$phenn[ mplants$phen=="b"] <- 2
+mplants$phenn[ mplants$phen=="c"] <- 3
+mplants$phenn[ mplants$phen=="d"] <- 4
+mplants$phenn[ mplants$phen=="e"] <- 5
+mplants$phenn[ mplants$phen=="f"] <- 6
+mplants$phenn<-as.integer(mplants$phenn)
+
