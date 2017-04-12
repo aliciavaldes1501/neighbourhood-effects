@@ -1,4 +1,21 @@
+#Temp, moist on phen, ants, dens ####
+mod_phen<-lm(as.integer(phen)~scale(meanTday)*scale(moist_per),allplants, na.action="na.fail")
+summary(mod_phen)
 
+mod_ants<-glm.nb(Mrub_sum~scale(meanTday)*scale(moist_per),allplants, na.action="na.fail")
+summary(mod_ants)
+plot(allplants$meanTday,allplants$Mrub_sum)
+plot(allplants$moist_per,allplants$Mrub_sum)
+
+mod_dens<-lm(pldens_2~scale(meanTday)*scale(moist_per),allplants, na.action="na.fail")
+summary(mod_dens)
+plot(allplants$meanTday,allplants$pldens_2)
+plot(allplants$moist_per,allplants$pldens_2)
+
+mod_phen_neigh<-lm(phen_n2~scale(meanTday)*scale(moist_per),allplants, na.action="na.fail")
+summary(mod_phen_neigh)
+plot(allplants$meanTday,allplants$phen_n2)
+plot(allplants$moist_per,allplants$phen_n2)
 
 
 

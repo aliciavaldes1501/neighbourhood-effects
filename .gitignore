@@ -3,3 +3,5 @@ gis/scans/
 .Rproj.user
 pics/
 gis/
+*.RData
+*.RDataTmp
