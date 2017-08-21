@@ -89,10 +89,38 @@ writeRaster(raster(krig1_meanT$krige_output), "D:/SU/projects/neighbourhood_effe
 writeRaster(raster(idw1_Mrub_sum), "D:/SU/projects/neighbourhood_effects/gis/raster/idw1_Mrub_sum", format = "GTiff")
 # and edit Spatial References in ArcCatalog --> RT90
 
+library(rasterVis)
+myTheme=rasterTheme(region=c("#B3B3B3",brewer.pal('RdBu', n=11)))
+
+tiff("C:/Users/Ali/Dropbox/SU/Projects/neighbourhood_effects/results/butterfly/figures/fig_Mrub.tiff",
+     res=600,width=26,height=18,units="cm",family="Times") 
+levelplot(raster(idw1_Mrub_sum), par.settings=myTheme, margin=F,scales=list(draw=FALSE))
+dev.off()
+tiff("C:/Users/Ali/Dropbox/SU/Projects/neighbourhood_effects/results/butterfly/figures/fig_Msca.tiff",
+     res=600,width=26,height=18,units="cm",family="Times") 
+levelplot(raster(idw1_Msca_sum), par.settings=myTheme, margin=F,scales=list(draw=FALSE))
+dev.off()
+tiff("C:/Users/Ali/Dropbox/SU/Projects/neighbourhood_effects/results/butterfly/figures/fig_Mrug.tiff",
+     res=600,width=26,height=18,units="cm",family="Times") 
+levelplot(raster(idw1_Mrug_sum), par.settings=myTheme, margin=F,scales=list(draw=FALSE))
+dev.off()
+tiff("C:/Users/Ali/Dropbox/SU/Projects/neighbourhood_effects/results/butterfly/figures/fig_Msch.tiff",
+     res=600,width=26,height=18,units="cm",family="Times") 
+levelplot(raster(idw1_Msch_sum), par.settings=myTheme, margin=F,scales=list(draw=FALSE))
+dev.off()
+tiff("C:/Users/Ali/Dropbox/SU/Projects/neighbourhood_effects/results/butterfly/figures/fig_oth.tiff",
+     res=600,width=26,height=18,units="cm",family="Times") 
+levelplot(raster(idw1_oth_sum), par.settings=myTheme, margin=F,scales=list(draw=FALSE))
+dev.off()
+
+
 #Divide marked plants between those that have GIS data and those that have not
 mplants_GIS<-subset(allplants,!is.na(pl_id))
 mplants_noGIS<-mplants[!mplants$pl_id %in% mplants_GIS$pl_id,]
 str(mplants_GIS)
 str(mplants_noGIS)
+
+
+
 
 #allplants does not include plants in mplants_noGIS

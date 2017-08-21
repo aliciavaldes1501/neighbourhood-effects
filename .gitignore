@@ -5,3 +5,5 @@ pics/
 gis/
 *.RData
 *.RDataTmp
+results/figures/
+results/butterfly/figures/

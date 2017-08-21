@@ -21,6 +21,3 @@ idw1_Mrub_rug_s<-idw(Mrub_rug_s ~ 1, data_pts, grd1, idp = 1, maxdist=3)
 idw1_Mrub_rug_m<-idw(Mrub_rug_m ~ 1, data_pts, grd1, idp = 1, maxdist=3)
 idw1_Mrub_rug_p<-idw(Mrub_rug_p ~ 1, data_pts, grd1, idp = 1, maxdist=3)
 
-
-
-
