@@ -187,10 +187,9 @@ p1<-ggplot(interaction1, aes(phen_int,fit, group = as.factor(Mrub_sch_s)))+
   theme(text=element_text(family="serif"))+theme(plot.background=element_rect(fill="white", colour=NA))
 p2<-ggplot(interaction2, aes(pldens_3,fit, group = as.factor(phen_n3)))+
   geom_smooth(method=loess,se=F,size=0.3,aes(pldens_3,fit,color=phen_n3))+
-  xlab("Neighborhood density")+ylab("Probability of having eggs")+
+  xlab("Neighbor density")+ylab("Probability of having eggs")+
   theme_base()+ scale_colour_gradientn(colours = myPalette(100))+
-  theme(legend.position="top")+labs(colour="Neighborhood phenology")+
-  theme(axis.title.y = element_text(colour = "white"))+
+  theme(legend.position="none")+labs(colour="Neighbor phenology")+
   theme(text=element_text(family="serif"))+theme(plot.background=element_rect(fill="white", colour=NA))
 p3<-ggplot(effect1, aes(phen_int,fit))+
   geom_smooth(method=loess,se=T,size=1,color="black",aes(phen_int,fit))+
@@ -203,35 +202,33 @@ p4<-ggplot(effect2, aes(Mrub_sch_s,fit))+
   xlab("Ant abundance")+ylab("Number of eggs")+theme_base()+
   scale_x_continuous(breaks=c(0,5,10,15,20,25,30,35))+
   scale_y_continuous(breaks=c(0,2,4,6,8,10,12,14,16))+
-  theme(axis.title.y = element_text(colour = "white"))+
   theme(text=element_text(family="serif"))+theme(plot.background=element_rect(fill="white", colour=NA))+
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.5,fill="grey")
 p5<-ggplot(interaction3, aes(pldens_3,fit, group = as.factor(phen_n3)))+
   geom_smooth(method=loess,se=F,size=0.3,aes(pldens_3,fit,color=phen_n3))+
-  xlab("Neighborhood density")+ylab("Number of eggs")+
+  xlab("Neighbor density")+ylab("Number of eggs")+
   theme_base()+ scale_colour_gradientn(colours = myPalette(100))+
   theme(legend.position="top")+labs(colour="Neigh. phenology")+
-  theme(axis.title.y = element_text(colour = "white"))+
   theme(text=element_text(family="serif"))+theme(plot.background=element_rect(fill="white", colour=NA))
 
 tiff("C:/Users/Ali/Dropbox/SU/Projects/neighbourhood_effects/results/butterfly/figures/fig2.tiff",
-     res=600,width=22,height=11,units="cm",family="Times") 
+     res=600,width=26,height=9,units="cm",family="Times") 
 ggdraw()+
-  draw_plot(p1,0,0,1/2,1)+
-  draw_plot(p2,1/2,0,1/2,1)+
-  draw_label(label="A)",x=0.01,y=0.9, fontfamily = "serif", fontface = 1)+
-  draw_label(label="B)",x=0.52,y=0.9, fontfamily = "serif", fontface = 1)
+  draw_plot(p1,0.02,0.01,0.3,1)+
+  draw_plot(p3,1/3+0.04,0.01,0.3,0.81)+
+  draw_plot(p4,2/3+0.04,0.01,0.3,0.81)+
+  draw_label(label="A)",x=0.01,y=0.8, fontfamily = "serif", fontface = 1)+
+  draw_label(label="B)",x=0.39,y=0.8, fontfamily = "serif", fontface = 1)+
+  draw_label(label="C)",x=0.73,y=0.8, fontfamily = "serif", fontface = 1)
 dev.off()
 
 tiff("C:/Users/Ali/Dropbox/SU/Projects/neighbourhood_effects/results/butterfly/figures/fig3.tiff",
-     res=600,width=26,height=10,units="cm",family="Times") 
+     res=600,width=22,height=11,units="cm",family="Times") 
 ggdraw()+
-  draw_plot(p3,0,0.01,1/3,0.8)+
-  draw_plot(p4,1/3,0.01,1/3,0.8)+
-  draw_plot(p5,2/3,0,1/3,1)+
-  draw_label(label="A)",x=0.01,y=0.8, fontfamily = "serif", fontface = 1)+
-  draw_label(label="B)",x=0.35,y=0.8, fontfamily = "serif", fontface = 1)+
-  draw_label(label="C)",x=0.69,y=0.8, fontfamily = "serif", fontface = 1)
+  draw_plot(p2,0.02,0,0.45,0.83)+
+  draw_plot(p5,1/2,0,0.45,1)+
+  draw_label(label="A)",x=0.01,y=0.81, fontfamily = "serif", fontface = 1)+
+  draw_label(label="B)",x=0.53,y=0.81, fontfamily = "serif", fontface = 1)
 dev.off()
 
 #Raw data

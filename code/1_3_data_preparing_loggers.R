@@ -53,3 +53,5 @@ cor(loggers_day_agg[2:6])
 write.dbf(loggers_agg, "D:/SU/projects/neighbourhood_effects/gis/tables/temp_GIS.dbf")
 write.dbf(loggers_day_agg, "D:/SU/projects/neighbourhood_effects/gis/tables/temp_day_GIS.dbf")
 
+write.table(loggers_agg,"C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/data/clean/loggers_agg.txt",
+            sep="\t",dec=".")

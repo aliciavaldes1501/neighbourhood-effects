@@ -4,8 +4,8 @@ library(fmsb)
 library(piecewiseSEM)
 
 load(file="allplants.R")  
-load(file="allplants.listw1.R")  
-load(file="allplants.listw2.R")  
+#load(file="allplants.listw1.R")  
+#load(file="allplants.listw2.R")  
 head(allplants)
 
 #Changes needed in allplants after inspection of comments on seed data
@@ -67,7 +67,7 @@ subset(allplants,fruitset>1) #5 cases
 allplants$n_fl<-ifelse(is.na(allplants$fr_in),allplants$n_fl,ifelse(allplants$fr_in>allplants$n_fl,allplants$fr_in,allplants$n_fl))
 allplants$fruitset<-ifelse(allplants$fruitset>1,1,allplants$fruitset)
 
-sem4<-list(#with fitness, attack
+sem4<-list(#with fitness, attack --> USE
   lm(phen_int~meanT*moist_per,allplants),
   glm.nb(Mrub_sch_s~meanT*moist_per,allplants),
   lm(suit_neigh~meanT*moist_per,allplants),
@@ -90,7 +90,7 @@ plot(lm(suit_neigh~meanT*moist_per,allplants))
 plot(glm(attack~phen_int*Mrub_sch_s+suit_neigh+meanT+moist_per,allplants,family="binomial"))
 plot(glm(cbind(fr_in,n_fl)~phen_int+meanT+moist_per+attack,allplants,family="binomial"))
 
-sem5<-list(#with fitness, number of eggs (only pls w eggs)
+sem5<-list(#with fitness, number of eggs (only pls w eggs) --> USE
   lm(phen_int~meanT*moist_per,allplants),
   glm.nb(Mrub_sch_s~meanT*moist_per,allplants),
   lm(suit_neigh~meanT*moist_per,allplants),
