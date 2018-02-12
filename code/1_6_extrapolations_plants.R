@@ -1,6 +1,6 @@
 #Extrapolate data temperature, moisture, ants to every plant
 #Read table exported from GIS with data on all plants (marked or not)
-allplants<-read.table("D:/SU/projects/neighbourhood_effects/gis/tables/plants_wmdata.txt",header=T,sep="\t",dec=".")
+allplants<-read.table("C:/Users/User/Dropbox/SU/projects/neighbourhood_effects/gis/tables/plants_wmdata.txt",header=T,sep="\t",dec=".")
 head(allplants)
 str(allplants)
 
