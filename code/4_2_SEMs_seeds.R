@@ -1,6 +1,6 @@
 library(data.table)
 
-seeds<-read.table("D:/SU/projects/neighbourhood_effects/data/raw/tanga2016_seeds.txt",header=T,sep="\t",dec=".")
+seeds<-read.table("C:/Users/User/Dropbox/SU/projects/neighbourhood_effects/data/raw/tanga2016_seeds.txt",header=T,sep="\t",dec=".")
 head(seeds)
 seeds<-subset(seeds,!is.na(n_dev_seeds))
 seeds <- dcast(seeds, pl_id_ALL ~ inmature+P_UP, value.var="n_dev_seeds")

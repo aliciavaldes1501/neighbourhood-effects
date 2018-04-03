@@ -10,7 +10,7 @@ library(intamap)
 library(gridExtra)
 
 #Reading data####
-data_pts<-read.table("D:/SU/projects/neighbourhood_effects/data/clean/points_all_data.txt",header=T,sep="\t",dec=".")
+data_pts<-read.table("C:/Users/User/Dropbox/SU/projects/neighbourhood_effects/data/clean/points_all_data.txt",header=T,sep="\t",dec=".")
 head(data_pts)
 str(data_pts)
 #Defining coordinates and coordinate system####
@@ -42,7 +42,7 @@ grd1<-SpatialPixelsDataFrame(grd1,
 plot(grd1)
 
 #Cut grid with shapefile "mask" (20 cm out of the borders of the occupied plots)
-mask<-readShapePoly("D:/SU/projects/neighbourhood_effects/gis/shapefiles/mask_20cm.shp",IDvar=NULL,proj4string=CRS(project1))
+mask<-readShapePoly("C:/Users/User/Dropbox/SU/projects/neighbourhood_effects/gis/shapefiles/mask_20cm.shp",IDvar=NULL,proj4string=CRS(project1))
 plot(mask)
 mask<-mask@polygons
 mask<-SpatialPolygons(mask, proj4string=CRS(project1))
@@ -81,7 +81,7 @@ krig1_rangeTday <-autoKrige(rangeTday~1,data_pts_t,grd1,verbose=T)
 krig1_MOIST_PER <-autoKrige(MOIST_PER_M~1,data_pts,grd1,verbose=T)
 krig1_MOIST_MV <-autoKrige(MOIST_MV_M~1,data_pts,grd1,verbose=T)
 
-pdf("D:/SU/projects/neighbourhood_effects/results/figures/kriging_temp_moist.pdf", family="Times",width=8,height=8)
+pdf("D:/Users/User/Dropbox/SU/projects/neighbourhood_effects/results/figures/kriging_temp_moist.pdf", family="Times",width=8,height=8)
 plot(krig1_meanT)
 plot(krig1_maxT)
 plot(krig1_minT)
@@ -195,7 +195,7 @@ sqrt( sum((krig1_MOIST_PER.out - data_pts$MOIST_PER_M)^2) / length(data_pts))
 sqrt( sum((krig1_MOIST_MV.out - data_pts$MOIST_MV_M)^2) / length(data_pts))
 
 # Plot the differences
-pdf("D:/SU/projects/neighbourhood_effects/results/figures/kriging_temp_moist_validation.pdf", family="Times",width=12,height=8)
+pdf("D:/Users/User/Dropbox/SU/projects/neighbourhood_effects/results/figures/kriging_temp_moist_validation.pdf", family="Times",width=12,height=8)
 par(mfrow=c(2,3))
 plot(krig1_meanT.out ~ data_pts_t$meanT, asp=1, xlab="Observed", ylab="Predicted", pch=16,
      col=rgb(0,0,0,0.5),main="Validation meanT")
