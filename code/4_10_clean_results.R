@@ -61,7 +61,9 @@ ggdraw()+
   draw_plot(p2,1/2-0.03,0.01,0.52,0.98)+
   draw_plot(p1,0.01,0.01,0.52,0.98)+
   draw_label(label="A)",x=0.02,y=0.97, fontfamily = "serif", fontface = 1)+
-  draw_label(label="B)",x=0.55,y=0.97, fontfamily = "serif", fontface = 1)  #Fig seeds / temp - moist
+  draw_label(label="B)",x=0.545,y=0.97, fontfamily = "serif", fontface = 1)  #Fig seeds / temp - moist
+ggsave(filename="C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/results/plant/figures/fig1.tiff",
+       device="tiff",width=20,height=10,units="cm",dpi=600)
 
 summary(lm(seeds_per_fl~meanT,allplants)) #*
 summary(lm(seeds_per_fl~moist_per,allplants)) #P=0.0589
@@ -458,6 +460,8 @@ sem.model.fits(sem11)
 summary(lm(pldens_3~PC1+PC2,allplants))
 summary(lm(phen_n3~PC1+PC2,allplants))
 
+#### STUFF FROM HERE NOT USED IN PAPER ####
+
 #### Selected graphs #### 
 
 #Not sure if needed, only done for egg occurrence by now
@@ -481,6 +485,20 @@ ggplot(allplants)+geom_smooth(aes(x=PC1,y=suit_neigh),method="lm",color="black")
   xlab("Microclimate")+ylab("Neighbor suitability")+ 
   annotate("text", x = 3.7, y = 40, label = "PC1",family = "serif",size=6)+
   annotate("text", x = 2.5, y = 115, label = "PC2",family = "serif",size=6)+
+  theme_base()+theme(plot.background=element_rect(fill="white", colour=NA))+theme(text=element_text(family="serif"))
+
+ggplot(allplants)+geom_smooth(aes(x=PC1,y=pldens_3),method="lm",color="black")+
+  geom_smooth(aes(x=PC2,y=pldens_3),method="lm",color="black",lty="dashed")+
+  xlab("Microclimate")+ylab("Neighbor density")+ 
+  annotate("text", x = 3.7, y = 10, label = "PC1",family = "serif",size=6)+
+  annotate("text", x = 2.5, y = 35, label = "PC2",family = "serif",size=6)+
+  theme_base()+theme(plot.background=element_rect(fill="white", colour=NA))+theme(text=element_text(family="serif"))
+
+ggplot(allplants)+geom_smooth(aes(x=PC1,y=phen_n3),method="lm",color="black")+
+  geom_smooth(aes(x=PC2,y=phen_n3),method="lm",color="black",lty="dashed")+
+  xlab("Microclimate")+ylab("Neighbor phenology")+ 
+  annotate("text", x = 3.7, y = 4.7, label = "PC1",family = "serif",size=6)+
+  annotate("text", x = 2.5, y = 3, label = "PC2",family = "serif",size=6)+
   theme_base()+theme(plot.background=element_rect(fill="white", colour=NA))+theme(text=element_text(family="serif"))
 
 interaction1<-data.frame(effect(term="phen_int:Mrub_sch_s_pres", mod=model10_4,
