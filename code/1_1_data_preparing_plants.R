@@ -6,9 +6,9 @@ library(dplyr)
 library(foreign)
 
 #Join data for marked plants on visits 1, 2, 3
-mplants1<-read.table("D:/SU/projects/neighbourhood_effects/data/raw/tanga2016_plants1.txt",header=T,sep="\t",dec=".")
-mplants2<-read.table("D:/SU/projects/neighbourhood_effects/data/raw/tanga2016_plants2.txt",header=T,sep="\t",dec=".")
-mplants3<-read.table("D:/SU/projects/neighbourhood_effects/data/raw/tanga2016_plants3.txt",header=T,sep="\t",dec=".")
+mplants1<-read.table("C:/Users/User/Dropbox/SU/projects/neighbourhood_effects/data/raw/tanga2016_plants1.txt",header=T,sep="\t",dec=".")
+mplants2<-read.table("C:/Users/User/Dropbox/SU/projects/neighbourhood_effects/data/raw/tanga2016_plants2.txt",header=T,sep="\t",dec=".")
+mplants3<-read.table("C:/Users/User/Dropbox/SU/projects/neighbourhood_effects/data/raw/tanga2016_plants3.txt",header=T,sep="\t",dec=".")
 
 mplants1$plot_id<-as.factor(mplants1$plot_id)
 mplants2$comments2<-as.character(mplants2$comments2)
@@ -64,7 +64,7 @@ mplants <- select(mplants,
                   bud_in,bud_pr,bud_ab,fl_in,fl_pr,fl_ab,fr_in,fr_inC,fr_pr,fr_prC,fr_ab,
                   new_mark,state_after_2,state_after_3,comments2,comments3) 
 head(mplants)
-write.table(mplants, "D:/SU/projects/neighbourhood_effects/data/clean/mplants.txt", sep="\t",dec=".",row.names=F)
+write.table(mplants, "C:/Users/User/Dropbox/SU/projects/neighbourhood_effects/data/clean/mplants.txt", sep="\t",dec=".",row.names=F)
 
 #Save as .dbf to use in ArcGIS
 #Change NA values to -9999

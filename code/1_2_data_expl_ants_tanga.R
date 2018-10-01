@@ -8,7 +8,7 @@ library(reshape2)
 library(ggthemes)
 library(foreign)
 
-ants_T<-read.table("D:/SU/projects/neighbourhood_effects/data/raw/tanga2016_ants.txt",header=T,sep="\t",dec=".")
+ants_T<-read.table("C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/data/raw/tanga2016_ants.txt",header=T,sep="\t",dec=".")
 head(ants_T)
 
 ants_T_long<-gather(ants_T,species,number,Mrubra,Mscabrinodis,Mruginodis,Mschencki,others,factor_key=TRUE)
