@@ -510,17 +510,15 @@ effect2<-data.frame(effect(term="scale(Mrub_sum)", mod=model4,xlevels=list(Mrub_
 interaction3<-data.frame(effect(term="scale(pldens_3):scale(phen_n3)", mod=model4,
                                 xlevels=list(phen_n3=seq(2.8,6,0.05),pldens_3=0:50)))
 
-myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
-
 p1<-ggplot(interaction1, aes(phen,fit, group = as.factor(Mrub_sum)))+
   geom_smooth(method=loess,se=F,size=0.3,aes(phen,fit,color=Mrub_sum))+
-  xlab("Shoot phenology")+ylab("Probability of having eggs")+theme_base()+scale_colour_gradientn(colours = myPalette(100))+
+  xlab("Shoot phenology")+ylab("Probability of having eggs")+theme_base()+scale_colour_distiller(type = "seq", palette=8,direction = 1)+
   theme(legend.position="top")+labs(colour="Ant abundance")+scale_x_continuous(breaks=c(1,2,3,4,5,6))+
   theme(text=element_text(family="serif"))+theme(plot.background=element_rect(fill="white", colour=NA))
 p2<-ggplot(interaction2, aes(pldens_3,fit, group = as.factor(phen_n3)))+
   geom_smooth(method=loess,se=F,size=0.3,aes(pldens_3,fit,color=phen_n3))+
   xlab("Neighbor density")+ylab("Probability of having eggs")+
-  theme_base()+ scale_colour_gradientn(colours = myPalette(100))+
+  theme_base()+scale_colour_distiller(type = "seq", palette=8,direction = 1)+
   theme(legend.position="none")+labs(colour="Neighbor phenology")+
   theme(text=element_text(family="serif"))+theme(plot.background=element_rect(fill="white", colour=NA))
 p3<-ggplot(effect1, aes(phen,fit))+
@@ -539,7 +537,7 @@ p4<-ggplot(effect2, aes(Mrub_sum,fit))+
 p5<-ggplot(interaction3, aes(pldens_3,fit, group = as.factor(phen_n3)))+
   geom_smooth(method=loess,se=F,size=0.3,aes(pldens_3,fit,color=phen_n3))+
   xlab("Neighbor density")+ylab("Number of eggs")+
-  theme_base()+ scale_colour_gradientn(colours = myPalette(100))+
+  theme_base()+scale_colour_distiller(type = "seq", palette=8,direction = 1)+
   theme(legend.position="top")+labs(colour="Neigh. phenology")+
   theme(text=element_text(family="serif"))+theme(plot.background=element_rect(fill="white", colour=NA))
 
