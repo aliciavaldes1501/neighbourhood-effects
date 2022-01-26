@@ -1,0 +1,1217 @@
+---
+title: "Gentiana paper 3.2"
+author : "Alicia Valdés"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: yes
+    toc_depth: 4
+editor_options:
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+```{r load packages, include=FALSE}
+library(RColorBrewer)
+library(ggplot2)
+library(ggthemes)
+library(grid)
+library(gridExtra)
+library(ggpubr)
+library(piecewiseSEM)
+library(MASS)
+library(semEff)
+library(RPushbullet)
+library(DHARMa)
+library(data.table)
+library(ncf)
+library(spdep)
+library(spatialreg)
+library(ggeffects)
+library(beepr)
+library(tidyverse)
+library(car)
+library(adespatial)
+library(viridis)
+library(sjPlot)
+```
+
+```{r Define ggplot themes, include=FALSE}
+my_theme <- function(){
+  theme_base()+theme(plot.background=element_rect(fill="white", colour=NA))+
+  theme(legend.position="none")+theme(text=element_text(family="serif"))+
+  theme(plot.title = element_text(hjust =-0.06))
+}
+my_theme_legend <- function(){
+  theme_base()+theme(plot.background=element_rect(fill="white", colour=NA))+
+  theme(text=element_text(family="serif"))+
+  theme(plot.title = element_text(hjust =-0.06))
+}
+```
+
+```{r Load previous image, include=FALSE}
+load("C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/4_models_plant/.RData")
+```
+
+# Load data and make fixes
+
+```{r}
+load("C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/4_models_plant/allplants.R")
+```
+
+
+```{r}
+head(allplants)
+# Changes needed in allplants after inspection of comments on seed data
+# Some fruits noted wrong P_UP
+allplants$fr_in[4486]=3
+allplants$fr_inC[4486]=0
+allplants$fr_pr[4486]=1
+allplants$fr_prC[4486]=1
+allplants$fr_in[7626]=4
+allplants$fr_inC[7626]=0
+allplants$fr_pr[7626]=1
+allplants$fr_prC[7626]=1
+
+allplants$fruitset<-allplants$fr_in/allplants$n_fl
+subset(allplants,fruitset>1) #5 cases
+# Change n_fl when fruiset results to be >1
+allplants$n_fl<-ifelse(is.na(allplants$fr_in),allplants$n_fl,
+                       ifelse(allplants$fr_in>allplants$n_fl,allplants$fr_in,
+                              allplants$n_fl))
+allplants$fruitset<-ifelse(allplants$fruitset>1,1,allplants$fruitset)
+
+seeds<-read.table(
+  "C:/Users/User/Dropbox/SU/projects/neighbourhood_effects/data/raw/tanga2016_seeds.txt",
+  header=T,sep="\t",dec=".")
+head(seeds)
+seeds<-subset(seeds,!is.na(n_dev_seeds))
+seeds <- dcast(seeds, pl_id_ALL ~ inmature+P_UP, value.var="n_dev_seeds")
+
+head(seeds)
+names(seeds)<-c("pl_id","P_m","UP_m","P_i","UP_i")
+seeds$status<-ifelse(!is.na(seeds$P_i)&!is.na(seeds$UP_i),"Both_i",
+                     ifelse(!is.na(seeds$P_i),"P_i",
+                            ifelse(!is.na(seeds$UP_i),"UP_i","Both_m")))
+
+head(as.data.frame(allplants)[c(4,6,18,20)])
+seeds<-merge(seeds,as.data.frame(allplants)[c(4,6,18,20)])
+seeds$seeds_per_fl<-(((rowSums(seeds[,c("UP_m", 
+                                        "UP_i")], na.rm=T))*seeds$fr_in)+
+                       ((rowSums(seeds[,c("P_m", "P_i")], na.rm=T))*seeds$fr_pr))/seeds$n_fl
+
+allplants<-merge(allplants,seeds[c(1:6,10)],all.x=T)
+hist(allplants$seeds_per_fl)
+
+allplants$attack_f<-as.factor(allplants$attack)
+```
+
+# Effect of microclimate on plant performance
+
+Seeds per fl against temp and moist (with marked pls which are the only ones w seed data).
+Univariate linear regressions of n seeds per flower against temp and moist.
+
+```{r}
+model1<-lm(seeds_per_fl~meanT,data=allplants)
+model2<-lm(seeds_per_fl~moist_per,data=allplants)
+summary(model1)
+summary(model2)
+```
+
+## Model diagnostics
+
+```{r}
+simulationOutput_model1<-simulateResiduals(fittedModel=model1,n=5000)
+simulationOutput_model2<-simulateResiduals(fittedModel=model2,n=5000)
+```
+
+```{r}
+plot(simulationOutput_model1) # OK
+plot(simulationOutput_model2) # OK
+```
+
+## Test residuals for spatial autocorrelation
+
+```{r}
+allplants$X<-print(allplants@coords[,1],digits=22)
+allplants$Y<-print(allplants@coords[,2],digits=22)
+```
+
+### Spatial correlograms
+
+```{r}
+res_model1<-residuals(model1) 
+res_model2<-residuals(model2)
+```
+
+```{r eval=FALSE, include=FALSE}
+correlog_model1 <- correlog(x=subset(allplants,!is.na(seeds_per_fl))$X,
+                            y=subset(allplants,!is.na(seeds_per_fl))$Y,
+                            res_model1,increment=1, resamp=100,quiet=F) 
+correlog_model2 <- correlog(x=subset(allplants,!is.na(seeds_per_fl))$X,
+                            y=subset(allplants,!is.na(seeds_per_fl))$Y,
+                            res_model2,increment=1, resamp=100,quiet=F) 
+spline.correlog_model1 <- spline.correlog(x=subset(allplants,!is.na(seeds_per_fl))$X,
+                            y=subset(allplants,!is.na(seeds_per_fl))$Y,
+                            res_model1,resamp=100,quiet=F,type="boot") 
+spline.correlog_model2 <- spline.correlog(x=subset(allplants,!is.na(seeds_per_fl))$X,
+                            y=subset(allplants,!is.na(seeds_per_fl))$Y,
+                            res_model2,resamp=100,quiet=F,type="boot") 
+```
+
+```{r}
+plot(correlog_model1)
+plot(correlog_model2)
+plot(spline.correlog_model1)
+plot(spline.correlog_model2)
+```
+
+### Moran's I
+
+Calculation of global Moran's I with a permutation test (1000 random permutations), based on a connectivity matrix of pairwise Euclidean distances among the shoots up to a distance of 30 m. 
+
+```{r eval=FALSE, include=FALSE}
+# Create neighbours matrix (30 m)
+allplants.listw_seeds <- nb2listw(dnearneigh(subset(allplants,
+                                               !is.na(seeds_per_fl)),0,30)) 
+moran_model1<- moran.mc(res_model1, listw=allplants.listw_seeds,nsim=999)
+moran_model2<- moran.mc(res_model2, listw=allplants.listw_seeds,nsim=999) 
+```
+
+```{r}
+moran_model1 #Significant autocorrelation in the residuals of model1
+moran_model2 #Significant autocorrelation in the residuals of model2
+```
+
+## Moran's eigenvector mapping
+
+```{r eval=FALSE, include=FALSE}
+ME.model1 <-ME(seeds_per_fl~meanT,listw=allplants.listw_seeds,
+               data=subset(allplants,!is.na(seeds_per_fl)),
+               alpha=0.05,verbose=T) 
+ME.model2 <-ME(seeds_per_fl~moist_per,listw=allplants.listw_seeds,
+               data=subset(allplants,!is.na(seeds_per_fl)),
+               alpha=0.05,verbose=T) 
+```
+
+```{r}
+vector1<-ME.model1$vectors[,1]
+vector2<-ME.model2$vectors[,1]
+
+model1_ME<-lm(seeds_per_fl~meanT+vector1,
+              data=subset(allplants,!is.na(seeds_per_fl)))
+model2_ME<-lm(seeds_per_fl~moist_per+vector2,
+              data=subset(allplants,!is.na(seeds_per_fl)))
+summary(model1_ME) # Temp NS
+summary(model2_ME) # Moisture *
+```
+
+```{r}
+### Figure 1 #### (not needed)
+fig1a<-ggplot(data.frame(allplants),aes(x=meanT,y=seeds_per_fl))+
+  xlab("Soil temperature (ºC)")+ylab(NULL)+ggtitle("A)")+my_theme()+
+  geom_ribbon(data=ggpredict(model1_ME,terms = "meanT [all]"),
+              aes(x=x,y=predicted,ymin=conf.low,ymax=conf.high),
+              fill="grey",alpha=0.7)+
+  geom_line(data=ggpredict(model1_ME,terms = "meanT [all]"),
+            aes(x=x,y=predicted),size=1,color="black")+
+  geom_point(size=2,alpha=0.2)+
+  ggtitle("A)")
+fig1b<-ggplot(data.frame(allplants),aes(x=moist_per,y=seeds_per_fl))+
+  xlab("Soil moisture (%)")+ylab(NULL)+ggtitle("B)")+my_theme()+
+  geom_ribbon(data=ggpredict(model2_ME,terms = "moist_per [all]"),
+              aes(x=x,y=predicted,ymin=conf.low,ymax=conf.high),
+              fill="grey",alpha=0.7)+
+  geom_line(data=ggpredict(model2_ME,terms = "moist_per [all]"),
+            aes(x=x,y=predicted),size=1,color="black")+
+  geom_point(size=2,alpha=0.2)+
+  ggtitle("B)")
+
+fig1<-grid.arrange(fig1a,fig1b,ncol=2,
+                   left=textGrob("Number of seeds per flower",just="center",
+                                 hjust=0.42,
+                                 gp=gpar(fontsize=16,fontfamily="serif"),
+                                 rot = 90))
+
+ggsave(filename="C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/results/plant/figures/fig1.tiff",
+       plot=fig1,device="tiff",width=22,height=11,units="cm",dpi=300,
+       compression="lzw")
+```
+
+## Test residuals for spatial autocorrelation after MEM
+
+Checking for spatial autocorrelation in the residuals of model1_ME and model2_ME 
+
+```{r}
+res_model1_ME<-residuals(model1_ME) #Get residuals of model
+res_model2_ME<-residuals(model2_ME) #Get residuals of model
+```
+
+### Spatial correlograms
+
+```{r eval=FALSE, include=FALSE}
+correlog_model1_ME <- correlog(x=subset(allplants,!is.na(seeds_per_fl))$X,
+                               y=subset(allplants,!is.na(seeds_per_fl))$Y,
+                               res_model1_ME,increment=1, resamp=100,quiet=F) 
+correlog_model2_ME <- correlog(x=subset(allplants,!is.na(seeds_per_fl))$X,
+                            y=subset(allplants,!is.na(seeds_per_fl))$Y,
+                            res_model2_ME,increment=1, resamp=100,quiet=F)
+spline.correlog_model1_ME <- spline.correlog(x=subset(allplants,
+                                                      !is.na(seeds_per_fl))$X,
+                                          y=subset(allplants,
+                                                   !is.na(seeds_per_fl))$Y,
+                                          res_model1_ME,resamp=100,quiet=F,
+                                          type="boot") 
+spline.correlog_model2_ME <- spline.correlog(x=subset(allplants,
+                                                      !is.na(seeds_per_fl))$X,
+                                          y=subset(allplants,
+                                                   !is.na(seeds_per_fl))$Y,
+                                          res_model2_ME,resamp=100,quiet=F,
+                                          type="boot") 
+```
+
+```{r}
+plot(correlog_model1_ME)
+plot(correlog_model2_ME)
+plot(spline.correlog_model1_ME)
+plot(spline.correlog_model2_ME)
+```
+
+### Moran's I
+
+```{r eval=FALSE, include=FALSE}
+moran_model1_ME<- moran.mc(res_model1_ME, listw=allplants.listw_seeds,nsim=999)
+moran_model2_ME<- moran.mc(res_model2_ME, listw=allplants.listw_seeds,nsim=999) 
+```
+
+```{r}
+moran_model1_ME # No spatial autocorrelation
+moran_model2_ME # No spatial autocorrelation 
+```
+
+## Appendix A
+
+```{r}
+# model1
+corr_model1<-data.frame(cbind(distance=
+                                as.vector(correlog_model1$mean.of.class[1:31]), 
+                      correlation=as.vector(correlog_model1$correlation[1:31]),
+                      p=as.vector(correlog_model1$p[1:31])))
+corr_model1_ME<-data.frame(cbind(distance=
+                                   as.vector(correlog_model1_ME$mean.of.class[1:31]),
+                                 correlation=
+                                   as.vector(correlog_model1_ME$correlation[1:31]),
+                                  p=as.vector(correlog_model1_ME$p[1:31])))
+corr_model1$type<-"model1"
+corr_model1_ME$type<-"model1_ME"
+corr_1<-rbind(corr_model1,corr_model1_ME)
+corr_1$sig<-as.factor(ifelse(corr_1$p<0.05,1,0))
+
+# model2
+corr_model2<-data.frame(cbind(distance=
+                                as.vector(correlog_model2$mean.of.class[1:31]), 
+                              correlation=
+                                as.vector(correlog_model2$correlation[1:31]),
+                              p=as.vector(correlog_model2$p[1:31])))
+corr_model2_ME<-data.frame(cbind(distance=
+                                   as.vector(correlog_model2_ME$mean.of.class[1:31]),
+                                 correlation=
+                                   as.vector(correlog_model2_ME$correlation[1:31]),
+                                 p=as.vector(correlog_model2_ME$p[1:31])))
+corr_model2$type<-"model2"
+corr_model2_ME$type<-"model2_ME"
+corr_2<-rbind(corr_model2,corr_model2_ME)
+corr_2$sig<-as.factor(ifelse(corr_2$p<0.05,1,0))
+
+AppA<-grid.arrange(
+  ggplot(corr_1,aes(x=distance, y=correlation)) +
+    geom_point(aes(colour=type,shape=sig),size=2) +
+    geom_line(aes(colour=type)) + ylab(NULL)+
+    scale_x_continuous("Distance (mean of class)",limits=c(0,30),
+                       breaks=c(0,5,10,15,20,25,30)) + 
+    scale_y_continuous(limits=c(-0.05,0.2),
+                       breaks = c(-0.05,0,0.05,0.1,0.15,0.20))+
+    scale_shape_manual(values=c(1,19))+
+    scale_color_manual(values=c("black","darkgrey"))+
+    geom_hline(aes(yintercept=0), colour="grey",linetype=3)+
+    my_theme()+ggtitle("A)")+
+    annotation_custom(grobTree(textGrob("Global Moran's I = 0.011, p = 0.005",
+                                        x=0.1,y=0.95,hjust=0,
+                                        gp=gpar(col="black",fontsize=14,
+                                                fontfamily="serif"))))+
+    annotation_custom(grobTree(textGrob("Global Moran's I = -0.001, p = 0.270",
+                                        x=0.1,y=0.85,hjust=0,
+                                        gp=gpar(col="darkgrey",fontsize=14,
+                                                fontfamily="serif")))),
+  ggplot(corr_2,aes(x=distance, y=correlation)) +
+    geom_point(aes(colour=type,shape=sig),size=2) +
+    geom_line(aes(colour=type)) + ylab(NULL)+
+    scale_x_continuous("Distance (mean of class)",limits=c(0,30),
+                       breaks=c(0,5,10,15,20,25,30)) + 
+    scale_y_continuous(limits=c(-0.05,0.2),
+                       breaks = c(-0.05,0,0.05,0.1,0.15,0.20))+
+    scale_shape_manual(values=c(1,19))+
+    scale_color_manual(values=c("black","darkgrey"))+
+    geom_hline(aes(yintercept=0), colour="grey",linetype=3)+
+    my_theme()+ggtitle("B)")+
+    annotation_custom(grobTree(textGrob("Global Moran's I = 0.013, p = 0.006",
+                                        x=0.1,y=0.95,hjust=0,
+                                        gp=gpar(col="black",fontsize=14,
+                                                fontfamily="serif"))))+
+    annotation_custom(grobTree(textGrob("Global Moran's I = 0.002, p = 0.323",
+                                        x=0.1,y=0.85,hjust=0,
+                                        gp=gpar(col="darkgrey",fontsize=14,
+                                                fontfamily="serif")))),
+  ncol=2,left=textGrob("Correlation (Moran's I)",just="center",
+                      hjust=0.42,
+                      gp=gpar(fontsize=16,fontfamily="serif"),
+                      rot = 90))
+
+ggsave(filename="C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/results/plant/figures/AppA.tiff",
+       plot=AppA,device="tiff",width=22,height=9,units="cm",dpi=300,
+       compression="lzw")
+
+```
+
+## Compare the three models
+
+```{r}
+AIC(model1,model1_ME,model1_SAR)
+AIC(model2,model2_ME,model2_SAR)
+```
+
+## Correlation among temp and moist
+
+```{r}
+cor(allplants$meanT,allplants$moist_per)
+```
+
+# SEM
+
+How much of the effect of microclimate on plant performance is due to direct / indirect / indirect2 effects
+
+```{r}
+subset1<-subset(allplants,!is.na(phen_int))
+subset2<-subset(allplants,!is.na(phen_int)&!is.na(seeds_per_fl))
+```
+
+## Component models of the SEM
+
+```{r}
+mod1<-lm(phen_int~meanT*moist_per,subset1,na.action=na.fail)
+mod2<-glm.nb(round(Mrub_sum)~meanT*moist_per,allplants,na.action=na.fail)
+mod3<-lm(pldens_3~meanT*moist_per,allplants,na.action=na.fail)
+mod3_nb<-glm.nb(round(pldens_3)~meanT*moist_per,allplants,
+                na.action=na.fail) 
+mod4<-lm(phen_n3~meanT*moist_per,allplants,na.action=na.fail)
+mod5<-glm(as.integer(attack)~phen_int+round(Mrub_sum)+phen_int:round(Mrub_sum)+
+            pldens_3+phen_n3+pldens_3:phen_n3+meanT*moist_per,
+          subset1,family="binomial",na.action=na.fail)
+mod5_1<-glm(as.integer(attack)~phen_int+round(Mrub_sum)+phen_int:round(Mrub_sum)+
+            pldens_3+phen_n3+pldens_3:phen_n3+meanT+moist_per,
+          subset1,family="binomial",na.action=na.fail)
+# Removed interaction meanT*moist_per because NS
+mod6<-lm(seeds_per_fl~phen_int+as.integer(attack)+meanT*moist_per,subset2,
+         na.action=na.fail)
+mod6_1<-lm(seeds_per_fl~phen_int+as.integer(attack)+meanT+moist_per,subset2,
+           na.action=na.fail) # Removed interaction meanT*moist_per because NS
+```
+
+```{r}
+AIC(mod3,mod3_nb)
+AIC(mod5,mod5_1)
+AIC(mod6,mod6_1)
+```
+
+## Model diagnostics of the component models
+
+```{r}
+simulationOutput_mod1<-simulateResiduals(fittedModel=mod1,n=5000)
+simulationOutput_mod2<-simulateResiduals(fittedModel=mod2,n=5000)
+simulationOutput_mod3<-simulateResiduals(fittedModel=mod3,n=5000) # LM is OK
+simulationOutput_mod3_nb<-simulateResiduals(fittedModel=mod3_nb,n=5000)
+simulationOutput_mod4<-simulateResiduals(fittedModel=mod4,n=5000)
+simulationOutput_mod5<-simulateResiduals(fittedModel=mod5,n=5000)
+simulationOutput_mod5_1<-simulateResiduals(fittedModel=mod5_1,n=5000)
+simulationOutput_mod6<-simulateResiduals(fittedModel=mod6,n=5000)
+simulationOutput_mod6_1<-simulateResiduals(fittedModel=mod6_1,n=5000)
+```
+
+```{r}
+plot(simulationOutput_mod1)
+plot(simulationOutput_mod2)
+plot(simulationOutput_mod3)
+plot(simulationOutput_mod3_nb)
+plot(simulationOutput_mod4)
+plot(simulationOutput_mod5)
+plot(simulationOutput_mod5_1)
+plot(simulationOutput_mod6)
+plot(simulationOutput_mod6_1)
+```
+
+## VIFs of the component models without interactions
+
+```{r}
+vif(lm(phen_int~meanT+moist_per,subset1,na.action=na.fail))
+vif(glm.nb(round(Mrub_sum)~meanT+moist_per,allplants,na.action=na.fail))
+vif(glm.nb(round(pldens_3)~meanT+moist_per,allplants,na.action=na.fail))
+vif(lm(phen_n3~meanT+moist_per,allplants,na.action=na.fail))
+vif(glm(as.integer(attack)~phen_int+round(Mrub_sum)+pldens_3+phen_n3+
+          meanT+moist_per,subset1,family="binomial",na.action=na.fail))
+vif(lm(seeds_per_fl~phen_int+as.integer(attack)+meanT+moist_per,subset2,
+       na.action=na.fail))
+```
+
+## Test residuals of component model sfor spatial autocorrelation
+
+### Spatial correlograms
+
+```{r eval=FALSE, include=FALSE}
+correlog_mod1 <- correlog(x=subset(allplants,!is.na(phen_int))$X,
+                          y=subset(allplants,!is.na(phen_int))$Y,
+                          residuals(mod1),increment=1,resamp=100,quiet=F) 
+correlog_mod2 <- correlog(x=allplants$X,
+                          y=allplants$Y,
+                          residuals(mod2),increment=1, resamp=100,quiet=F) 
+correlog_mod3 <- correlog(x=allplants$X,
+                          y=allplants$Y,
+                          residuals(mod3),increment=1, resamp=100,quiet=F) 
+correlog_mod3_nb <- correlog(x=allplants$X,
+                          y=allplants$Y,
+                          residuals(mod3_nb),increment=1, resamp=100,quiet=F) 
+correlog_mod4 <- correlog(x=allplants$X,
+                          y=allplants$Y,
+                          residuals(mod4),increment=1, resamp=100,quiet=F) 
+correlog_mod5 <- correlog(x=subset(allplants,!is.na(phen_int))$X,
+                          y=subset(allplants,!is.na(phen_int))$Y,
+                          residuals(mod5),increment=1, resamp=100,quiet=F) 
+correlog_mod5_1 <- correlog(x=subset(allplants,!is.na(phen_int))$X,
+                          y=subset(allplants,!is.na(phen_int))$Y,
+                          residuals(mod5_1),increment=1, resamp=100,quiet=F) 
+correlog_mod6 <- correlog(x=subset(allplants,!is.na(seeds_per_fl))$X,
+                          y=subset(allplants,!is.na(seeds_per_fl))$Y,
+                          residuals(mod6),increment=1, resamp=100,quiet=F) 
+correlog_mod6_1 <- correlog(x=subset(allplants,!is.na(seeds_per_fl))$X,
+                          y=subset(allplants,!is.na(seeds_per_fl))$Y,
+                          residuals(mod6_1),increment=1, resamp=100,quiet=F) 
+```
+
+```{r}
+plot(correlog_mod1)
+plot(correlog_mod2)
+plot(correlog_mod3)
+plot(correlog_mod3_nb)
+plot(correlog_mod4)
+plot(correlog_mod5)
+plot(correlog_mod5_1)
+plot(correlog_mod6)
+plot(correlog_mod6_1)
+```
+
+### Moran's I
+
+Load neighbours matrix (30 m)
+
+```{r}
+load("C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/4_models_plant/allplants.listw1.R")
+```
+
+```{r eval=FALSE, include=FALSE}
+allplants.listw_ants <- nb2listw(dnearneigh(subset(allplants,
+                                                   !is.na(Mrub_sum)),0,30)) 
+```
+
+```{r eval=FALSE, include=FALSE}
+moran_mod1<- moran.mc(residuals(mod1),listw=allplants.listw1,nsim=999)
+
+moran_mod2<- moran.mc(residuals(mod2),listw=allplants.listw_ants,nsim=999)
+moran_mod3<- moran.mc(residuals(mod3),listw=allplants.listw_ants,nsim=999)
+moran_mod3_nb<- moran.mc(residuals(mod3_nb),listw=allplants.listw_ants,nsim=999)
+moran_mod4<- moran.mc(residuals(mod4),listw=allplants.listw_ants,nsim=999)
+moran_mod5<- moran.mc(residuals(mod5),listw=allplants.listw1,nsim=999)
+moran_mod5_1<- moran.mc(residuals(mod5_1),listw=allplants.listw1,nsim=999)
+moran_mod6<- moran.mc(residuals(mod6),listw=allplants.listw_seeds,nsim=999)
+moran_mod6_1<- moran.mc(residuals(mod6_1),listw=allplants.listw_seeds,nsim=999)
+```
+
+```{r}
+moran_mod1 # Significant autocorrelation in the residuals of mod1
+moran_mod2 # Significant autocorrelation in the residuals of mod2
+moran_mod3 # Significant autocorrelation in the residuals of mod3
+moran_mod3_nb # Significant autocorrelation in the residuals of mod3_nb
+moran_mod4 # Significant autocorrelation in the residuals of mod4
+moran_mod5 # Significant autocorrelation in the residuals of mod5
+moran_mod5_1 # Significant autocorrelation in the residuals of mod5_1
+moran_mod6 # No significant autocorrelation in the residuals of mod6
+moran_mod6_1 # No significant autocorrelation in the residuals of mod6_1
+```
+
+## Moran's eigenvector mapping
+
+```{r eval=FALSE, include=FALSE}
+ME.mod1 <-ME(phen_int~meanT*moist_per,listw=allplants.listw1,
+               data=subset(allplants,!is.na(phen_int)),
+             family="gaussian",alpha=0.05,verbose=T) 
+ME.mod2 <-ME(mod2,listw=allplants.listw_ants,alpha=0.05,verbose=T) 
+ME.mod3 <-ME(mod3,listw=allplants.listw_ants,alpha=0.05,verbose=T)
+ME.mod3_nb <-ME(mod3_nb,listw=allplants.listw_ants,alpha=0.05,verbose=T)
+ME.mod4 <-ME(phen_n3~meanT*moist_per,listw=allplants.listw_ants,
+             data=allplants,
+             family="gaussian",alpha=0.05,verbose=T) 
+ME.mod5_1 <-ME(as.integer(attack)~phen_int*round(Mrub_sum)+
+               round(pldens_3)*phen_n3+meanT+moist_per,
+             listw=allplants.listw1,
+             data=subset(allplants,!is.na(phen_int)),
+             family="binomial",alpha=0.05,verbose=T)
+# Warning messages:
+#   1: glm.fit: fitted probabilities numerically 0 or 1 occurred 
+# 2: glm.fit: fitted probabilities numerically 0 or 1 occurred 
+# 3: glm.fit: fitted probabilities numerically 0 or 1 occurred 
+# 4: glm.fit: fitted probabilities numerically 0 or 1 occurred 
+```
+
+```{r}
+mod1_ME<-lm(phen_int~meanT*moist_per+ME.mod1$vectors[,1]+ME.mod1$vectors[,2],
+            subset1,na.action=na.fail)
+mod2_ME<-glm.nb(round(Mrub_sum)~meanT*moist_per+ME.mod2$vectors[,1],allplants,
+                na.action=na.fail)
+mod3_nb_ME<-glm.nb(round(pldens_3)~meanT*moist_per+
+                     ME.mod3_nb$vectors[,1]+ME.mod3_nb$vectors[,2], 
+                   allplants,
+                  na.action=na.fail)
+mod4_ME<-lm(phen_n3~meanT*moist_per+ME.mod4$vectors[,1]+ME.mod4$vectors[,2]+
+            ME.mod4$vectors[,3]+ME.mod4$vectors[,4]+
+            ME.mod4$vectors[,5],allplants,na.action=na.fail)
+mod5_1_ME<-glm(as.integer(attack)~phen_int+round(Mrub_sum)+
+                 phen_int:round(Mrub_sum)+pldens_3+phen_n3+pldens_3:phen_n3+
+                 meanT+moist_per+ME.mod5_1$vectors[,1],
+               subset1,family="binomial",na.action=na.fail)
+summary(mod1_ME)
+summary(mod2_ME)
+summary(mod3_nb_ME)
+summary(mod4_ME)
+summary(mod5_1_ME)
+summary(mod6_1)
+```
+
+## Test residuals for spatial autocorrelation after MEM
+
+### Spatial correlograms
+
+```{r eval=FALSE, include=FALSE}
+correlog_mod1_ME <- correlog(x=subset(allplants,!is.na(phen_int))$X,
+                          y=subset(allplants,!is.na(phen_int))$Y,
+                          residuals(mod1_ME),increment=1,resamp=100,quiet=F) 
+correlog_mod2_ME <- correlog(x=allplants$X,
+                          y=allplants$Y,
+                          residuals(mod2_ME),increment=1, resamp=100,quiet=F) 
+correlog_mod3_ME <- correlog(x=allplants$X,
+                             y=allplants$Y,
+                             residuals(mod3_ME),increment=1, resamp=100,quiet=F)
+correlog_mod3_nb_ME <- correlog(x=allplants$X,
+                          y=allplants$Y,
+                          residuals(mod3_nb_ME),increment=1, resamp=100,quiet=F)
+correlog_mod4_ME <- correlog(x=allplants$X,
+                          y=allplants$Y,
+                          residuals(mod4_ME),increment=1, resamp=100,quiet=F)
+correlog_mod5_1_ME <- correlog(x=subset(allplants,!is.na(phen_int))$X,
+                             y=subset(allplants,!is.na(phen_int))$Y,
+                             residuals(mod5_1_ME),increment=1, resamp=100,
+                             quiet=F)
+```
+
+```{r}
+plot(correlog_mod1_ME)
+plot(correlog_mod2_ME)
+plot(correlog_mod3_ME)
+plot(correlog_mod3_nb_ME)
+plot(correlog_mod4_ME)
+plot(correlog_mod5_1_ME)
+```
+
+### Moran's I
+
+```{r eval=FALSE, include=FALSE}
+moran_mod1_ME<- moran.mc(residuals(mod1_ME),listw=allplants.listw1,nsim=999)
+moran_mod2_ME<- moran.mc(residuals(mod2_ME),listw=allplants.listw_ants,nsim=999)
+moran_mod3_ME<- moran.mc(residuals(mod3_ME),listw=allplants.listw_ants,nsim=999)
+moran_mod3_nb_ME<- moran.mc(residuals(mod3_nb_ME),listw=allplants.listw_ants,nsim=999)
+moran_mod4_ME<- moran.mc(residuals(mod4_ME),listw=allplants.listw_ants,nsim=999)
+moran_mod5_1_ME<- moran.mc(residuals(mod5_1_ME),listw=allplants.listw1,nsim=999)
+```
+
+```{r}
+moran_mod1_ME # No significant autocorrelation in the residuals of mod1_ME
+moran_mod2_ME # No significant autocorrelation in the residuals of mod2_ME
+moran_mod3_ME # No significant autocorrelation in the residuals of mod3_ME
+moran_mod3_nb_ME # No significant autocorrelation in the residuals of mod3_nb_ME
+moran_mod4_ME # No significant autocorrelation in the residuals of mod4_ME
+moran_mod5_1_ME # Significant autocorrelation in the residuals of mod5_1_ME
+```
+
+Spatial autocorrelation is mostly removed by including ME vectors (except in moran_mod5_1_ME, p-value went from 0.001 to 0.024).
+
+## Alternative MEM for mod5
+
+From mem.select function help: If the objective is to optimize the detection of the spatial patterns in the residuals of a model of the response variable(s) against a set of environmental predictors, for instance, then x should be the model residuals, and method = "FWD". This allows optimizing the detection of residual spatial patterns once the effect of the environmental predictors has been removed.
+
+```{r eval=FALSE, include=FALSE}
+mem.select_mod5_1<-mem.select(x=residuals(mod5_1),listw=allplants.listw1,
+                              MEM.autocor = "all",method = "FWD",MEM.all = TRUE,
+                              nperm = 99,nperm.global = 999,alpha = 0.05,
+                              verbose = TRUE)
+```
+
+```{r}
+mod5_1_MEM<-glm(as.integer(attack)~phen_int+round(Mrub_sum)+
+                  phen_int:round(Mrub_sum)+pldens_3+phen_n3+pldens_3:phen_n3+
+                  meanT+moist_per+
+                  mem.select_mod5_1$MEM.select$MEM2+
+                  mem.select_mod5_1$MEM.select$MEM9+
+                  mem.select_mod5_1$MEM.select$MEM56+
+                  mem.select_mod5_1$MEM.select$MEM5, # First 4 eigenvectors
+                subset1,family="binomial",na.action=na.fail)
+
+summary(mod5_1_MEM)
+```
+
+## Test residuals for spatial autocorrelation after MEM
+
+### Spatial correlograms
+
+```{r eval=FALSE, include=FALSE}
+correlog_mod5_1_MEM <- correlog(x=subset(allplants,!is.na(phen_int))$X,
+                             y=subset(allplants,!is.na(phen_int))$Y,
+                             residuals(mod5_1_MEM),increment=1, resamp=100,
+                             quiet=F)
+```
+
+```{r}
+plot(correlog_mod5_1_MEM)
+```
+
+### Moran's I
+
+```{r eval=FALSE, include=FALSE}
+moran_mod5_1_MEM<- moran.mc(residuals(mod5_1_MEM),listw=allplants.listw1,
+                            nsim=999)
+```
+
+```{r}
+moran_mod5_1_MEM
+```
+
+Spatial autocorrelation is removed by including ME vectors (also in moran_mod5_1_MEM, p-value went from 0.001 to 0.128).
+
+## Appendix C
+
+```{r}
+# mod1
+corr_mod1<-data.frame(cbind(distance=as.vector(correlog_mod1$mean.of.class[1:31]), 
+                              correlation=as.vector(correlog_mod1$correlation[1:31]),
+                              p=as.vector(correlog_mod1$p[1:31])))
+corr_mod1_ME<-data.frame(cbind(distance=as.vector(correlog_mod1_ME$mean.of.class[1:31]), 
+                                 correlation=as.vector(correlog_mod1_ME$correlation[1:31]),
+                                 p=as.vector(correlog_mod1_ME$p[1:31])))
+
+corr_mod1$type<-"mod1"
+corr_mod1_ME$type<-"mod1_ME"
+corr_sem_1<-rbind(corr_mod1,corr_mod1_ME)
+corr_sem_1$sig<-as.factor(ifelse(corr_sem_1$p<0.05,1,0))
+
+# mod2
+corr_mod2<-data.frame(cbind(distance=as.vector(correlog_mod2$mean.of.class[1:31]), 
+                            correlation=as.vector(correlog_mod2$correlation[1:31]),
+                            p=as.vector(correlog_mod2$p[1:31])))
+corr_mod2_ME<-data.frame(cbind(distance=as.vector(correlog_mod2_ME$mean.of.class[1:31]), 
+                               correlation=as.vector(correlog_mod2_ME$correlation[1:31]),
+                               p=as.vector(correlog_mod2_ME$p[1:31])))
+
+corr_mod2$type<-"mod2"
+corr_mod2_ME$type<-"mod2_ME"
+corr_sem_2<-rbind(corr_mod2,corr_mod2_ME)
+corr_sem_2$sig<-as.factor(ifelse(corr_sem_2$p<0.05,1,0))
+
+# mod3
+corr_mod3<-data.frame(cbind(distance=as.vector(correlog_mod3_nb$mean.of.class[1:31]), 
+                            correlation=as.vector(correlog_mod3_nb$correlation[1:31]),
+                            p=as.vector(correlog_mod3_nb$p[1:31])))
+corr_mod3_ME<-data.frame(cbind(distance=as.vector(correlog_mod3_nb_ME$mean.of.class[1:31]), 
+                               correlation=as.vector(correlog_mod3_nb_ME$correlation[1:31]),
+                               p=as.vector(correlog_mod3_nb_ME$p[1:31])))
+
+corr_mod3$type<-"mod3"
+corr_mod3_ME$type<-"mod3_ME"
+corr_sem_3<-rbind(corr_mod3,corr_mod3_ME)
+corr_sem_3$sig<-as.factor(ifelse(corr_sem_3$p<0.05,1,0))
+
+# mod4
+corr_mod4<-data.frame(cbind(distance=as.vector(correlog_mod4$mean.of.class[1:31]), 
+                            correlation=as.vector(correlog_mod4$correlation[1:31]),
+                            p=as.vector(correlog_mod4$p[1:31])))
+corr_mod4_ME<-data.frame(cbind(distance=as.vector(correlog_mod4_ME$mean.of.class[1:31]), 
+                               correlation=as.vector(correlog_mod4_ME$correlation[1:31]),
+                               p=as.vector(correlog_mod4_ME$p[1:31])))
+
+corr_mod4$type<-"mod4"
+corr_mod4_ME$type<-"mod4_ME"
+corr_sem_4<-rbind(corr_mod4,corr_mod4_ME)
+corr_sem_4$sig<-as.factor(ifelse(corr_sem_4$p<0.05,1,0))
+
+# mod5
+corr_mod5<-data.frame(cbind(distance=as.vector(correlog_mod5_1$mean.of.class[1:31]), 
+                            correlation=as.vector(correlog_mod5_1$correlation[1:31]),
+                            p=as.vector(correlog_mod5_1$p[1:31])))
+corr_mod5_MEM<-data.frame(cbind(distance=as.vector(correlog_mod5_1_MEM$mean.of.class[1:31]), 
+                               correlation=as.vector(correlog_mod5_1_MEM$correlation[1:31]),
+                               p=as.vector(correlog_mod5_1_MEM$p[1:31])))
+
+corr_mod5$type<-"mod5"
+corr_mod5_MEM$type<-"mod5_MEM"
+corr_sem_5<-rbind(corr_mod5,corr_mod5_MEM)
+corr_sem_5$sig<-as.factor(ifelse(corr_sem_5$p<0.05,1,0))
+
+# mod6
+corr_sem_6<-data.frame(cbind(distance=as.vector(correlog_mod6_1$mean.of.class[1:31]), 
+                            correlation=as.vector(correlog_mod6_1$correlation[1:31]),
+                            p=as.vector(correlog_mod6_1$p[1:31])))
+corr_sem_6$sig<-as.factor(ifelse(corr_sem_6$p<0.05,1,0))
+```
+
+```{r}
+AppC<-grid.arrange(
+  ggplot(corr_sem_1,aes(x=distance, y=correlation)) +
+    geom_point(aes(colour=type,shape=sig),size=2) +
+    geom_line(aes(colour=type)) + xlab(NULL) + ylab(NULL)+
+    scale_x_continuous(limits=c(0,30),
+                       breaks=c(0,10,20,30)) + 
+    scale_y_continuous(limits=c(-0.1,0.4),
+                       breaks = c(-0.1,0,0.1,0.20,0.30,0.40))+
+    scale_shape_manual(values=c(1,19))+
+    scale_color_manual(values=c("black","darkgrey"))+
+    geom_hline(aes(yintercept=0), colour="grey",linetype=3)+
+    my_theme()+ggtitle("Component model 1")+
+    annotation_custom(grobTree(textGrob("Global Moran's I = 0.006, p = 0.001",
+                                        x=0.18,y=0.95,hjust=0,
+                                        gp=gpar(col="black",fontsize=16,
+                                                fontfamily="serif"))))+
+    annotation_custom(grobTree(textGrob("Global Moran's I = 0.000, p = 0.113",
+                                        x=0.18,y=0.85,hjust=0,
+                                        gp=gpar(col="darkgrey",fontsize=16,
+                                                fontfamily="serif")))),
+  ggplot(corr_sem_2,aes(x=distance, y=correlation)) +
+    geom_point(aes(colour=type,shape=sig),size=2) +
+    geom_line(aes(colour=type)) + xlab(NULL) + ylab(NULL)+
+    scale_x_continuous(limits=c(0,30),
+                       breaks=c(0,10,20,30)) + 
+    scale_y_continuous(limits=c(-0.4,1.2),
+                       breaks = c(-0.4,-0.2,0,0.2,0.4,0.6,0.8,1,1.2))+
+    scale_shape_manual(values=c(19,1))+
+    scale_color_manual(values=c("black","darkgrey"))+
+    geom_hline(aes(yintercept=0), colour="grey",linetype=3)+
+    my_theme()+ggtitle("Component model 2")+
+    annotation_custom(grobTree(textGrob("Global Moran's I = 0.004, p = 0.001",
+                                        x=0.18,y=0.95,hjust=0,
+                                        gp=gpar(col="black",fontsize=16,
+                                                fontfamily="serif"))))+
+    annotation_custom(grobTree(textGrob("Global Moran's I = -0.002, p = 0.999",
+                                        x=0.18,y=0.85,hjust=0,
+                                        gp=gpar(col="darkgrey",fontsize=16,
+                                                fontfamily="serif")))),
+  ggplot(corr_sem_3,aes(x=distance, y=correlation)) +
+    geom_point(aes(colour=type,shape=sig),size=2) +
+    geom_line(aes(colour=type)) + xlab(NULL) + ylab(NULL)+
+    scale_x_continuous(limits=c(0,30),
+                       breaks=c(0,10,20,30)) + 
+    scale_y_continuous(limits=c(-0.5,1.25),
+                        breaks = seq(-0.5,1.25,0.25))+
+    scale_shape_manual(values=c(1,19))+
+    scale_color_manual(values=c("black","darkgrey"))+
+    geom_hline(aes(yintercept=0), colour="grey",linetype=3)+
+    my_theme()+ggtitle("Component model 3")+
+    annotation_custom(grobTree(textGrob("Global Moran's I = 0.037, p = 0.001",
+                                        x=0.18,y=0.95,hjust=0,
+                                        gp=gpar(col="black",fontsize=16,
+                                                fontfamily="serif"))))+
+    annotation_custom(grobTree(textGrob("Global Moran's I = -0.001, p = 0.999",
+                                        x=0.18,y=0.85,hjust=0,
+                                        gp=gpar(col="darkgrey",fontsize=16,
+                                                fontfamily="serif")))),
+  ggplot(corr_sem_4,aes(x=distance, y=correlation)) +
+    geom_point(aes(colour=type,shape=sig),size=2) +
+    geom_line(aes(colour=type)) + xlab(NULL) + ylab(NULL)+
+    scale_x_continuous(limits=c(0,30),
+                       breaks=c(0,10,20,30)) + 
+    scale_y_continuous(limits=c(-0.25,1),
+                        breaks =seq(-0.25,1,0.25))+
+    scale_shape_manual(values=c(19,1))+
+    scale_color_manual(values=c("black","darkgrey"))+
+    geom_hline(aes(yintercept=0), colour="grey",linetype=3)+
+    my_theme()+ggtitle("Component model 4")+
+    annotation_custom(grobTree(textGrob("Global Moran's I = 0.101, p = 0.001",
+                                        x=0.18,y=0.95,hjust=0,
+                                        gp=gpar(col="black",fontsize=16,
+                                                fontfamily="serif"))))+
+    annotation_custom(grobTree(textGrob("Global Moran's I = 0.000, p = 0.651",
+                                        x=0.18,y=0.85,hjust=0,
+                                        gp=gpar(col="darkgrey",fontsize=16,
+                                                fontfamily="serif")))),
+  ggplot(corr_sem_5,aes(x=distance, y=correlation)) +
+    geom_point(aes(colour=type,shape=sig),size=2) +
+    geom_line(aes(colour=type)) + xlab(NULL) + ylab(NULL)+
+    scale_x_continuous(limits=c(0,30),
+                       breaks=c(0,10,20,30)) + 
+    scale_y_continuous(limits=c(-0.05,0.25),
+                        breaks =seq(-0.05,0.25,0.05))+
+    scale_shape_manual(values=c(1,19))+
+    scale_color_manual(values=c("black","darkgrey"))+
+    geom_hline(aes(yintercept=0), colour="grey",linetype=3)+
+    my_theme()+ggtitle("Component model 5")+
+    annotation_custom(grobTree(textGrob("Global Moran's I = 0.007, p = 0.001",
+                                        x=0.18,y=0.95,hjust=0,
+                                        gp=gpar(col="black",fontsize=16,
+                                                fontfamily="serif"))))+
+    annotation_custom(grobTree(textGrob("Global Moran's I = 0.000, p = 0.128",
+                                        x=0.18,y=0.85,hjust=0,
+                                        gp=gpar(col="darkgrey",fontsize=16,
+                                                fontfamily="serif")))),
+  ggplot(corr_sem_6,aes(x=distance, y=correlation)) +
+    geom_point(aes(shape=sig),size=2,colour="black") +
+    geom_line(colour="black") + xlab(NULL) + ylab(NULL)+
+    scale_x_continuous(limits=c(0,30),
+                       breaks=c(0,10,20,30)) + 
+    scale_y_continuous(limits=c(-0.05,0.15),
+                        breaks =seq(-0.05,0.15,0.05))+
+    scale_shape_manual(values=c(1,19))+
+    geom_hline(aes(yintercept=0), colour="grey",linetype=3)+
+    my_theme()+ggtitle("Component model 6")+
+    annotation_custom(grobTree(textGrob("Global Moran's I = -0.004, p = 0.591",
+                                        x=0.18,y=0.95,hjust=0,
+                                        gp=gpar(col="black",fontsize=16,
+                                                fontfamily="serif")))),
+  ncol=2,
+  left=textGrob("Correlation (Moran's I)",just="center",
+                hjust=0.42,gp=gpar(fontsize=16,fontfamily="serif"),rot=90),
+  bottom=textGrob("Distance (mean of class)",just="center",
+                  hjust=0.42,gp=gpar(fontsize=16,fontfamily="serif")))
+
+ggsave(filename="C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/results/plant/figures/AppC.tiff",
+       plot=AppC,device="tiff",width=25,height=30,units="cm",dpi=300,
+       compression="lzw")
+```
+
+## Save spatial vectors
+
+```{r}
+vector1_1<-data.frame(FID=subset(allplants,!is.na(phen_int))$FID,
+                      vector1_1=ME.mod1$vectors[,1])
+vector1_2<-data.frame(FID=subset(allplants,!is.na(phen_int))$FID,
+                      vector1_2=ME.mod1$vectors[,2])
+vector2_1<-data.frame(FID=allplants$FID,vector2_1=ME.mod2$vectors[,1])
+vector3_1<-data.frame(FID=allplants$FID,vector3_1=ME.mod3$vectors[,1])
+vector3_2<-data.frame(FID=allplants$FID,vector3_2=ME.mod3$vectors[,2])
+vector4_1<-data.frame(FID=allplants$FID,vector4_1=ME.mod4$vectors[,1])
+vector4_2<-data.frame(FID=allplants$FID,vector4_2=ME.mod4$vectors[,2])
+vector4_3<-data.frame(FID=allplants$FID,vector4_3=ME.mod4$vectors[,3])
+vector4_4<-data.frame(FID=allplants$FID,vector4_4=ME.mod4$vectors[,4])
+vector4_5<-data.frame(FID=allplants$FID,vector4_5=ME.mod4$vectors[,5])
+vector5_1<-data.frame(FID=subset(allplants,!is.na(phen_int))$FID,
+                      vector5_1=mem.select_mod5_1$MEM.select$MEM2)
+vector5_2<-data.frame(FID=subset(allplants,!is.na(phen_int))$FID,
+                      vector5_2=mem.select_mod5_1$MEM.select$MEM9)
+vector5_3<-data.frame(FID=subset(allplants,!is.na(phen_int))$FID,
+                      vector5_3=mem.select_mod5_1$MEM.select$MEM56)
+vector5_4<-data.frame(FID=subset(allplants,!is.na(phen_int))$FID,
+                      vector5_4=mem.select_mod5_1$MEM.select$MEM5)
+```
+
+## Fit the SEM
+
+```{r}
+allplants_df<-data.frame(allplants)%>%
+  full_join(vector1_1)%>%full_join(vector1_2)%>%full_join(vector2_1)%>%
+  full_join(vector3_1)%>%full_join(vector3_2)%>%full_join(vector4_1)%>%
+  full_join(vector4_2)%>%full_join(vector4_3)%>%full_join(vector4_4)%>%
+  full_join(vector4_5)%>%full_join(vector5_1)%>%full_join(vector5_2)%>%
+  full_join(vector5_3)%>%full_join(vector5_4)
+
+allplants_df$Mrub_sum_round<-round(allplants_df$Mrub_sum)
+allplants_df$pldens_3_round<-round(allplants_df$pldens_3)
+```
+
+### SEM with no correlated errors
+
+```{r}
+sem1<-psem(
+  # Model 1)
+  lm(phen_int~meanT*moist_per,subset(allplants_df,!is.na(phen_int))),
+  # Model 2)
+  glm.nb(Mrub_sum_round~meanT*moist_per,allplants_df),
+  # Model 3)
+  lm(pldens_3~meanT*moist_per,allplants_df),
+  # Model 4)
+  lm(phen_n3~meanT*moist_per,allplants_df),
+  # Model 5)
+  glm(as.integer(attack)~phen_int*Mrub_sum_round+pldens_3*phen_n3+
+        meanT+moist_per,subset(allplants_df,!is.na(phen_int)),
+      family="binomial"),
+  # Model 6)
+  lm(seeds_per_fl~phen_int+as.integer(attack)+meanT+moist_per,
+     subset(allplants_df,!is.na(phen_int)))
+)
+summary(sem1,conserve=TRUE) 
+```
+
+p=0, include correlated errors.
+
+### SEM with correlated errors
+
+```{r}
+sem1<-psem(
+  # Model 1)
+  lm(phen_int~meanT*moist_per,subset(allplants_df,!is.na(phen_int))),
+  # Model 2)
+  glm.nb(Mrub_sum_round~meanT*moist_per,allplants_df),
+  # Model 3)
+  lm(pldens_3~meanT*moist_per,allplants_df),
+  # Model 4)
+  lm(phen_n3~meanT*moist_per,allplants_df),
+  # Model 5)
+  glm(as.integer(attack)~phen_int*Mrub_sum_round+pldens_3*phen_n3+
+        meanT+moist_per,subset(allplants_df,!is.na(phen_int)),
+      family="binomial"),
+  # Model 6)
+  lm(seeds_per_fl~phen_int+as.integer(attack)+meanT+moist_per,
+     subset(allplants_df,!is.na(phen_int))),
+  # Correlated errors
+  phen_n3 %~~% phen_int,phen_n3 %~~% pldens_3,phen_n3 %~~% Mrub_sum_round,
+  pldens_3 %~~% Mrub_sum_round,Mrub_sum_round %~~% phen_int,
+  pldens_3 %~~% phen_int
+)
+summary(sem1)
+```
+
+p=0.093, OK!!!
+
+Including the ME vectors in the SEM gives problems (when including many vectors). Besides, the test of direct separation suggested several missing paths including vectors, which we don't want to include. Therefore, we can show the SEM without ME vectors in the main text, and then (in Appendix) results of models wwith ME vectors. Or show coefficients and significances from both alternatives in a figure in the main text. 
+
+### SEM with correlated errors and LM for ants (to get std coefs)
+
+```{r}
+sem2<-psem(
+  # Model 1)
+  lm(phen_int~meanT*moist_per,subset(allplants_df,!is.na(phen_int))),
+  # Model 2)
+  lm(Mrub_sum_round~meanT*moist_per,allplants_df),
+  # Model 3)
+  lm(pldens_3~meanT*moist_per,allplants_df),
+  # Model 4)
+  lm(phen_n3~meanT*moist_per,allplants_df),
+  # Model 5)
+  glm(as.integer(attack)~phen_int*Mrub_sum_round+pldens_3*phen_n3+
+        meanT+moist_per,subset(allplants_df,!is.na(phen_int)),
+      family="binomial"),
+  # Model 6)
+  lm(seeds_per_fl~phen_int+as.integer(attack)+meanT+moist_per,
+     subset(allplants_df,!is.na(phen_int))),
+  # Correlated errors
+  phen_n3 %~~% phen_int,phen_n3 %~~% pldens_3,phen_n3 %~~% Mrub_sum_round,
+  pldens_3 %~~% Mrub_sum_round,Mrub_sum_round %~~% phen_int,
+  pldens_3 %~~% phen_int
+)
+summary(sem2)
+```
+
+### Summaries from component models with ME vectors
+
+```{r}
+mod1_ME<-lm(phen_int~meanT*moist_per+vector1_1+vector1_2,
+            allplants_df)
+mod2_ME<-glm.nb(round(Mrub_sum)~meanT*moist_per+vector2_1,allplants_df)
+mod3_ME<-lm(pldens_3~meanT*moist_per+vector3_1+vector3_2, 
+            allplants_df)
+mod4_ME<-lm(phen_n3~meanT*moist_per+vector4_1+vector4_2+vector4_3+vector4_4+
+              vector4_5,allplants_df)
+mod5_1_MEM<-glm(as.integer(attack)~phen_int+round(Mrub_sum)+
+                  phen_int:round(Mrub_sum)+pldens_3+phen_n3+pldens_3:phen_n3+
+                  meanT+moist_per+vector5_1+vector5_2+vector5_3+vector5_4,
+                allplants_df,family="binomial")
+summary(mod1_ME)
+summary(mod2_ME)
+summary(mod3_ME)
+summary(mod3_nb_ME)
+summary(mod4_ME)
+summary(mod5_1_MEM)
+summary(mod6_1)
+```
+
+### Plots with std coefs from component models with ME vectors
+
+```{r}
+plot_model(mod1_ME,type="std",transform=NULL,show.values=T,digits=3)
+# How to scale explanatory vars?
+```
+
+### Prediction plots from component models with ME vectors
+
+```{r}
+pred1<-ggplot(ggpredict(mod1_ME,terms = c("meanT[all]","moist_per[meansd]")),
+       aes(x,predicted,colour=group,fill=group))+
+  geom_ribbon(aes(ymin=conf.low,ymax=conf.high,fill=group,color=NULL),
+              size=0.5,alpha=0.2)+
+  geom_line(aes(color=group),size=0.5)+my_theme()+
+  scale_color_manual(values=viridis(3,direction=-1))+
+  scale_fill_manual(values=viridis(3,direction=-1))+
+  labs(colour="Soil moisture (%)")+
+  xlab("Soil temperature (ºC)")+
+  ylab("Plant phenology")
+ggsave(filename="C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/results/plant/figures/pred1.tiff",
+       width=10,height=9,units="cm",dpi=300)
+pred2<-ggplot(ggpredict(mod2_ME,terms = c("meanT[all]","moist_per[meansd]")),
+       aes(x,predicted,colour=group,fill=group))+
+  geom_ribbon(aes(ymin=conf.low,ymax=conf.high,fill=group,color=NULL),
+              size=0.5,alpha=0.2)+
+  geom_line(aes(color=group),size=0.5)+my_theme()+
+  scale_color_manual(values=viridis(3,direction=-1))+
+  scale_fill_manual(values=viridis(3,direction=-1))+
+  labs(colour="Soil moisture (%)")+
+  xlab("Soil temperature (ºC)")+
+  ylab("Ant abundance")
+ggsave(filename="C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/results/plant/figures/pred2.tiff",
+       width=10,height=9,units="cm",dpi=300)
+pred3<-ggplot(ggpredict(mod3_ME,terms = c("meanT[all]","moist_per[meansd]")),
+       aes(x,predicted,colour=group,fill=group))+
+  geom_ribbon(aes(ymin=conf.low,ymax=conf.high,fill=group,color=NULL),
+              size=0.5,alpha=0.2)+
+  geom_line(aes(color=group),size=0.5)+my_theme()+
+  scale_color_manual(values=viridis(3,direction=-1))+
+  scale_fill_manual(values=viridis(3,direction=-1))+
+  labs(colour="Soil moisture (%)")+
+  xlab("Soil temperature (ºC)")+
+  ylab("Neighbour density")
+ggsave(filename="C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/results/plant/figures/pred3.tiff",
+       width=10,height=9,units="cm",dpi=300)
+pred4<-ggplot(ggpredict(mod4_ME,terms = c("meanT[all]","moist_per[meansd]")),
+       aes(x,predicted,colour=group,fill=group))+
+  geom_ribbon(aes(ymin=conf.low,ymax=conf.high,fill=group,color=NULL),
+              size=0.5,alpha=0.2)+
+  geom_line(aes(color=group),size=0.5)+my_theme()+
+  scale_color_manual(values=viridis(3,direction=-1))+
+  scale_fill_manual(values=viridis(3,direction=-1))+
+  labs(colour="Soil moisture (%)")+
+  xlab("Soil temperature (ºC)")+
+  ylab("Neighbour phenology")
+ggsave(filename="C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/results/plant/figures/pred4.tiff",
+       width=10,height=9,units="cm",dpi=300)
+pred5_1<-ggplot(ggpredict(mod5_1_MEM,terms = c("phen_int[all]","Mrub_sum[0:34,by=10]")),
+       aes(x,predicted,colour=group,fill=group))+
+  geom_ribbon(aes(ymin=conf.low,ymax=conf.high,fill=group,color=NULL),
+              size=0.5,alpha=0.2)+
+  geom_line(aes(color=group),size=0.5)+my_theme()+
+  scale_color_manual(values=viridis(4,direction=-1))+
+  scale_fill_manual(values=viridis(4,direction=-1))+
+  labs(colour="Ant abundance")+
+  xlab("Plant phenology")+
+  ylab("Probability of egg occurrence")
+ggsave(filename="C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/results/plant/figures/pred5_1.tiff",
+       width=10,height=9,units="cm",dpi=300)
+pred5_2<-ggplot(ggpredict(mod5_1_MEM,terms = c("pldens_3[all]","phen_n3[meansd]")),
+       aes(x,predicted,colour=group,fill=group))+
+  geom_ribbon(aes(ymin=conf.low,ymax=conf.high,fill=group,color=NULL),
+              size=0.5,alpha=0.2)+
+  geom_line(aes(color=group),size=0.5)+my_theme()+
+  scale_color_manual(values=viridis(3,direction=-1))+
+  scale_fill_manual(values=viridis(3,direction=-1))+
+  labs(colour="Neighbour phenology")+
+  xlab("Neighbour density")+
+  ylab("Probability of egg occurrence")
+ggsave(filename="C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/results/plant/figures/pred5_2.tiff",
+       width=10,height=9,units="cm",dpi=300)
+```
+
+#### Figure 2
+
+```{r fig.height=6, fig.width=8}
+legend<-cowplot::get_legend(pred1+my_theme_legend()+
+                              theme(legend.position="top")+
+                              guides(color=FALSE)+
+                              labs(fill="Soil moisture (%)"))
+pred1_nox<-pred1+xlab(NULL)+ggtitle("(A)")
+pred2_nox<-pred2+xlab(NULL)+ggtitle("(B)")
+pred3_nox<-pred3+xlab(NULL)+ggtitle("(C)")
+pred4_nox<-pred4+xlab(NULL)+ggtitle("(D)")
+fig2<-cowplot::plot_grid(legend,
+                         grid.arrange(pred1_nox,pred2_nox,pred3_nox,pred4_nox,
+                                      ncol=2,
+                                      bottom=textGrob("Soil temperature (ºC)",
+                                                      gp=gpar(fontsize=16,
+                                                              fontfamily="serif"))),
+                         ncol = 1, rel_heights = c(.05,1))
+ggsave(fig2,
+       filename="C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/results/plant/figures/fig2.tiff",
+       width=16,height=16,units="cm",dpi=300)
+```
+
+#### Figure 3
+
+```{r fig.height=5, fig.width=10}
+pred5_1_nox<-pred5_1+ylab(NULL)+ggtitle("(A)")+my_theme_legend()+
+  theme(legend.position="top")+guides(color=FALSE)+
+  labs(fill="Ant abundance")
+pred5_2_nox<-pred5_2+ylab(NULL)+ggtitle("(B)")+my_theme_legend()+
+  theme(legend.position="top")+guides(color=FALSE)+
+  labs(fill="Neighbour phenology")
+fig3<-grid.arrange(pred5_1_nox,pred5_2_nox,ncol=2,
+             left=textGrob("Probability of egg occurrence",rot=90,
+                             gp=gpar(fontsize=16,fontfamily="serif")))
+ggsave(fig3,
+       filename="C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/results/plant/figures/fig3.tiff",
+       width=24,height=12,units="cm",dpi=300)
+```
+
+# Appendix D
+
+```{r}
+ggplot(allplants_df,aes(x=meanT,y=moist_per,
+                        color=phen_int,
+                        alpha=1/fields::interp.surface(
+                          MASS::kde2d(allplants_df$meanT,
+                                      allplants_df$moist_per), 
+                          allplants_df[,c("meanT", "moist_per")])))+
+  geom_point(shape=16,size=3)+my_theme_legend()+
+  scale_color_gradient(name="Plant\nphenology",low="#0091ff",high="#f0650e")+
+  guides(alpha=FALSE)+
+  xlab("Soil temperature (ºC)")+ylab("Soil moisture (%)")
+ggsave(filename="C:/Users/User/Dropbox/SU/Projects/neighbourhood_effects/results/plant/figures/AppD.tiff",
+       width=16,height=12,units="cm",dpi=300)
+```
+
+
+# Testing if preyed fruits have fewer seeds than intact
+
+```{r}
+seeds_P_UP<-seeds%>%
+  mutate(seeds_UP=rowSums(.[c(3,5)],na.rm=T),
+         seeds_P=rowSums(.[c(2,4)],na.rm=T))%>%
+  select(c("pl_id","seeds_UP","seeds_P"))%>%
+  pivot_longer(cols=seeds_UP:seeds_P,names_to="P_UP",values_to="seeds")
+
+ggplot(seeds_P_UP,aes(x=P_UP,y=seeds))+geom_boxplot()
+
+summary(lm(seeds~P_UP,seeds_P_UP))
+summary(glm(seeds~P_UP,seeds_P_UP,family=poisson))
+summary(glm.nb(seeds~P_UP,seeds_P_UP))
+  
+seeds_P_UP%>%
+  group_by(P_UP)%>%
+  summarise(mean=mean(seeds),sd=sd(seeds))
+```
+
+```{r include=FALSE}
+sessionInfo()
+```
+

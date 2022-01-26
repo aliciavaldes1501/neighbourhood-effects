@@ -453,97 +453,97 @@ coefs1
 coefs2<-coefs(sem15)
 coefs2
 
-#Make-up interaction variables
-allplants_clean_rubra$phen_ants<-allplants_clean_rubra$phen_int*round(allplants_clean_rubra$Mrub_sum)
-allplants_clean_rubra$dens_phen<-allplants_clean_rubra$pldens_3*allplants_clean_rubra$phen_n3
-
-glm(as.integer(attack)~phen_int+round(Mrub_sum)+phen_int:round(Mrub_sum)+pldens_3+phen_n3+pldens_3:phen_n3+PC1+PC2,
-    subset(allplants_clean_rubra,!is.na(phen_int)),family="binomial")
-glm(as.integer(attack)~phen_int+round(Mrub_sum)+phen_ants+pldens_3+phen_n3+dens_phen+PC1+PC2,
-    subset(allplants_clean_rubra,!is.na(phen_int)),family="binomial")
-
-sem14_int<-psem(lm(phen_int~PC1+PC2,subset(allplants_clean_rubra,!is.na(phen_int))),
-            glm.nb(round(Mrub_sum)~PC1+PC2,allplants_clean_rubra), # Round to avoid non-integers
-            lm(pldens_3~PC1+PC2,allplants_clean_rubra),
-            lm(phen_n3~PC1+PC2,allplants_clean_rubra),
-            lm(phen_ants~phen_int+round(Mrub_sum),allplants_clean_rubra),
-            lm(dens_phen~pldens_3+phen_n3,allplants_clean_rubra),
-            glm(as.integer(attack)~phen_int+round(Mrub_sum)+phen_ants+pldens_3+phen_n3+dens_phen+PC1+PC2,
-                subset(allplants_clean_rubra,!is.na(phen_int)),family="binomial"),
-            lm(seeds_per_fl~phen_int+as.integer(attack)+PC1+PC2,subset(allplants_clean_rubra,!is.na(seeds_per_fl))),
-            phen_n3%~~%pldens_3,phen_int%~~%phen_n3,phen_n3%~~%round(Mrub_sum),pldens_3%~~%round(Mrub_sum),phen_int%~~%pldens_3) 
-summary(sem14_int) # p=0.002 
-
-phen_to_int<-as.numeric(coefs(sem14_int)[9,8])
-ants_to_int<-as.numeric(coefs(sem14_int)[10,8])
-pldens_3_to_int<-as.numeric(coefs(sem14_int)[11,8])
-phen_n3_to_int<-as.numeric(coefs(sem14_int)[12,8])
-
 #PC1
 
-#Direct effect of PC1 on seed sper fl: 
+#Direct effect of PC1 on seed sper fl: -0.0322
 as.numeric(coefs1[19,8])
 
-#Total indirect effect of PC1 on seeds per fl: -0.04206903 (prev -1.176888)
-as.numeric(coefs1[13,8])*as.numeric(coefs1[18,8])+                                            #PC1->attack->seeds_per_fl
-  as.numeric(coefs1[1,8])*as.numeric(coefs1[17,8])+                                           #PC1->phen->seeds_per_fl
-  as.numeric(coefs1[1,8])*as.numeric(coefs1[9,8])*as.numeric(coefs1[18,8])+                   #PC1->phen->attack->seeds_per_fl
-  as.numeric(coefs1[1,8])*phen_to_int*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC1->phen->int->attack->seeds_per_fl
-  as.numeric(coefs2[3,8])*as.numeric(coefs1[10,8])*as.numeric(coefs1[18,8])+                  #PC1->ants->attack->seeds_per_fl
-  as.numeric(coefs2[3,8])*ants_to_int*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC1->ants->int->attack->seeds_per_fl
-  as.numeric(coefs1[5,8])*as.numeric(coefs1[11,8])*as.numeric(coefs1[18,8])+                  #PC1->pldens_3->attack->seeds_per_fl
-  as.numeric(coefs1[5,8])*pldens_3_to_int*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])+  #PC1->pldens_3->int->attack->seeds_per_fl
-  as.numeric(coefs2[7,8])*as.numeric(coefs1[12,8])*as.numeric(coefs1[18,8])+                  #PC1->phen_n3->attack->seeds_per_fl
-  as.numeric(coefs2[7,8])*phen_n3_to_int*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])    #PC1->phen_n3->int->attack->seeds_per_fl
+#Total indirect effect of PC1 on seeds per fl: -0.000726414 (prev -1.176888)
+as.numeric(coefs1[13,8])*as.numeric(coefs1[18,8])+                                  #PC1->attack->seeds_per_fl
+  as.numeric(coefs1[1,8])*as.numeric(coefs1[17,8])+                                 #PC1->phen->seeds_per_fl
+  as.numeric(coefs1[1,8])*as.numeric(coefs1[9,8])*as.numeric(coefs1[18,8])+         #PC1->phen->attack->seeds_per_fl
+  as.numeric(coefs1[1,8])*1*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC1->phen->int->attack->seeds_per_fl
+  as.numeric(coefs2[3,8])*as.numeric(coefs1[10,8])*as.numeric(coefs1[18,8])+        #PC1->ants->attack->seeds_per_fl
+  as.numeric(coefs2[3,8])*1*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC1->ants->int->attack->seeds_per_fl
+  as.numeric(coefs1[5,8])*as.numeric(coefs1[11,8])*as.numeric(coefs1[18,8])+        #PC1->pldens_3->attack->seeds_per_fl
+  as.numeric(coefs1[5,8])*1*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])+      #PC1->pldens_3->int->attack->seeds_per_fl
+  as.numeric(coefs2[7,8])*as.numeric(coefs1[12,8])*as.numeric(coefs1[18,8])+        #PC1->phen_n3->attack->seeds_per_fl
+  as.numeric(coefs2[7,8])*1*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])       #PC1->phen_n3->int->attack->seeds_per_fl
   
 #Indirect effects of PC1 on seeds per fl acting through attack: -0.05200965 (prev -0.2051301)
-as.numeric(coefs1[13,8])*as.numeric(coefs1[18,8])                                             #PC1->attack->seeds_per_fl
+as.numeric(coefs1[13,8])*as.numeric(coefs1[18,8])                                   #PC1->attack->seeds_per_fl
 
 #Indirect effects of PC1 on seeds per fl acting through phen: 0.02514024 (prev 0.02162098)
-as.numeric(coefs1[1,8])*as.numeric(coefs1[17,8])                                              #PC1->phen->seeds_per_fl
+as.numeric(coefs1[1,8])*as.numeric(coefs1[17,8])                                    #PC1->phen->seeds_per_fl
 
-#(Very) indirect effects of PC1 on seeds per fl acting through effects of phen, ants and suit on attack: -0.01519962 (prev -0.9933788)
-as.numeric(coefs1[1,8])*as.numeric(coefs1[9,8])*as.numeric(coefs1[18,8])+                     #PC1->phen->attack->seeds_per_fl
-  as.numeric(coefs1[1,8])*phen_to_int*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC1->phen->int->attack->seeds_per_fl
-  as.numeric(coefs2[3,8])*as.numeric(coefs1[10,8])*as.numeric(coefs1[18,8])+                  #PC1->ants->attack->seeds_per_fl
-  as.numeric(coefs2[3,8])*ants_to_int*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC1->ants->int->attack->seeds_per_fl
-  as.numeric(coefs1[5,8])*as.numeric(coefs1[11,8])*as.numeric(coefs1[18,8])+                  #PC1->pldens_3->attack->seeds_per_fl
-  as.numeric(coefs1[5,8])*pldens_3_to_int*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])+  #PC1->pldens_3->int->attack->seeds_per_fl
-  as.numeric(coefs2[7,8])*as.numeric(coefs1[12,8])*as.numeric(coefs1[18,8])+                  #PC1->phen_n3->attack->seeds_per_fl
-  as.numeric(coefs2[7,8])*phen_n3_to_int*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])    #PC1->phen_n3->int->attack->seeds_per_fl
+#(Very) indirect effects of PC1 on seeds per fl acting through effects of phen, ants and suit on attack: 0.026143 (prev -0.9933788)
+as.numeric(coefs1[1,8])*as.numeric(coefs1[9,8])*as.numeric(coefs1[18,8])+           #PC1->phen->attack->seeds_per_fl
+  as.numeric(coefs1[1,8])*1*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC1->phen->int->attack->seeds_per_fl
+  as.numeric(coefs2[3,8])*as.numeric(coefs1[10,8])*as.numeric(coefs1[18,8])+        #PC1->ants->attack->seeds_per_fl
+  as.numeric(coefs2[3,8])*1*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC1->ants->int->attack->seeds_per_fl
+  as.numeric(coefs1[5,8])*as.numeric(coefs1[11,8])*as.numeric(coefs1[18,8])+        #PC1->pldens_3->attack->seeds_per_fl
+  as.numeric(coefs1[5,8])*1*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])+      #PC1->pldens_3->int->attack->seeds_per_fl
+  as.numeric(coefs2[7,8])*as.numeric(coefs1[12,8])*as.numeric(coefs1[18,8])+        #PC1->phen_n3->attack->seeds_per_fl
+  as.numeric(coefs2[7,8])*1*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])       #PC1->phen_n3->int->attack->seeds_per_fl
+
+#(Very) indirect effects of PC1 on seeds per fl acting through effects of phen, ants on attack: -0.0496366 
+as.numeric(coefs1[1,8])*as.numeric(coefs1[9,8])*as.numeric(coefs1[18,8])+           #PC1->phen->attack->seeds_per_fl
+  as.numeric(coefs1[1,8])*1*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC1->phen->int->attack->seeds_per_fl
+  as.numeric(coefs2[3,8])*as.numeric(coefs1[10,8])*as.numeric(coefs1[18,8])+        #PC1->ants->attack->seeds_per_fl
+  as.numeric(coefs2[3,8])*1*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])      #PC1->ants->int->attack->seeds_per_fl
+
+#(Very) indirect effects of PC1 on seeds per fl acting through effects of suit on attack: 0.0757796
+as.numeric(coefs1[5,8])*as.numeric(coefs1[11,8])*as.numeric(coefs1[18,8])+        #PC1->pldens_3->attack->seeds_per_fl
+  as.numeric(coefs1[5,8])*1*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])+      #PC1->pldens_3->int->attack->seeds_per_fl
+  as.numeric(coefs2[7,8])*as.numeric(coefs1[12,8])*as.numeric(coefs1[18,8])+        #PC1->phen_n3->attack->seeds_per_fl
+  as.numeric(coefs2[7,8])*1*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])       #PC1->phen_n3->int->attack->seeds_per_fl
 
 #PC2
 
 #Direct effect of PC2 on seeds per fl: -0.0401
 as.numeric(coefs1[20,8])
 
-#Total indirect effect of PC2 on seeds per fl: -0.08355863 (prev 0.6608619)
-as.numeric(coefs1[14,8])*as.numeric(coefs1[18,8])+                                            #PC2->attack->seeds_per_fl
-  as.numeric(coefs1[2,8])*as.numeric(coefs1[17,8])+                                           #PC2->phen->seeds_per_fl
-  as.numeric(coefs1[2,8])*as.numeric(coefs1[9,8])*as.numeric(coefs1[18,8])+                   #PC2->phen->attack->seeds_per_fl
-  as.numeric(coefs1[2,8])*phen_to_int*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC2->phen->int->attack->seeds_per_fl
-  as.numeric(coefs2[4,8])*as.numeric(coefs1[10,8])*as.numeric(coefs1[18,8])+                  #PC2->ants->attack->seeds_per_fl
-  as.numeric(coefs2[4,8])*ants_to_int*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC2->ants->int->attack->seeds_per_fl
-  as.numeric(coefs1[6,8])*as.numeric(coefs1[11,8])*as.numeric(coefs1[18,8])+                  #PC2->pldens_3->attack->seeds_per_fl
-  as.numeric(coefs1[6,8])*pldens_3_to_int*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])+  #PC2->pldens_3->int->attack->seeds_per_fl
-  as.numeric(coefs2[8,8])*as.numeric(coefs1[12,8])*as.numeric(coefs1[18,8])+                  #PC2->phen_n3->attack->seeds_per_fl
-  as.numeric(coefs2[8,8])*phen_n3_to_int*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])    #PC2->phen_n3->int->attack->seeds_per_fl
+#Total indirect effect of PC2 on seeds per fl: -0.1286283 (prev 0.6608619)
+as.numeric(coefs1[14,8])*as.numeric(coefs1[18,8])+                                  #PC2->attack->seeds_per_fl
+  as.numeric(coefs1[2,8])*as.numeric(coefs1[17,8])+                                 #PC2->phen->seeds_per_fl
+  as.numeric(coefs1[2,8])*as.numeric(coefs1[9,8])*as.numeric(coefs1[18,8])+         #PC2->phen->attack->seeds_per_fl
+  as.numeric(coefs1[2,8])*1*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC2->phen->int->attack->seeds_per_fl
+  as.numeric(coefs2[4,8])*as.numeric(coefs1[10,8])*as.numeric(coefs1[18,8])+        #PC2->ants->attack->seeds_per_fl
+  as.numeric(coefs2[4,8])*1*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC2->ants->int->attack->seeds_per_fl
+  as.numeric(coefs1[6,8])*as.numeric(coefs1[11,8])*as.numeric(coefs1[18,8])+        #PC2->pldens_3->attack->seeds_per_fl
+  as.numeric(coefs1[6,8])*1*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])+      #PC2->pldens_3->int->attack->seeds_per_fl
+  as.numeric(coefs2[8,8])*as.numeric(coefs1[12,8])*as.numeric(coefs1[18,8])+        #PC2->phen_n3->attack->seeds_per_fl
+  as.numeric(coefs2[8,8])*1*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])       #PC2->phen_n3->int->attack->seeds_per_fl
 
 #Indirect effects of PC2 on seeds per fl acting through attack: -0.07330015 (prev -0.5916516)
-as.numeric(coefs1[14,8])*as.numeric(coefs1[18,8])                                             #PC2->attack->seeds_per_fl
+as.numeric(coefs1[14,8])*as.numeric(coefs1[18,8])                                   #PC2->attack->seeds_per_fl
 
 #Indirect effects of PC2 on seeds per fl acting through phen: -0.02611656 (prev -0.02943603)
-as.numeric(coefs1[2,8])*as.numeric(coefs1[17,8])                                              #PC2->phen->seeds_per_fl
+as.numeric(coefs1[2,8])*as.numeric(coefs1[17,8])                                    #PC2->phen->seeds_per_fl
 
-#(Very) indirect effects of PC2 on seeds per fl acting through effects of phen, ants and suit on attack: 0.01585808 (prev 1.28195)
-as.numeric(coefs1[2,8])*as.numeric(coefs1[9,8])*as.numeric(coefs1[18,8])+                     #PC2->phen->attack->seeds_per_fl
-  as.numeric(coefs1[2,8])*phen_to_int*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC2->phen->int->attack->seeds_per_fl
-  as.numeric(coefs2[4,8])*as.numeric(coefs1[10,8])*as.numeric(coefs1[18,8])+                  #PC2->ants->attack->seeds_per_fl
-  as.numeric(coefs2[4,8])*ants_to_int*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC2->ants->int->attack->seeds_per_fl
-  as.numeric(coefs1[6,8])*as.numeric(coefs1[11,8])*as.numeric(coefs1[18,8])+                  #PC2->pldens_3->attack->seeds_per_fl
-  as.numeric(coefs1[6,8])*pldens_3_to_int*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])+  #PC2->pldens_3->int->attack->seeds_per_fl
-  as.numeric(coefs2[8,8])*as.numeric(coefs1[12,8])*as.numeric(coefs1[18,8])+                  #PC2->phen_n3->attack->seeds_per_fl
-  as.numeric(coefs2[8,8])*phen_n3_to_int*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])    #PC2->phen_n3->int->attack->seeds_per_fl
+#(Very) indirect effects of PC2 on seeds per fl acting through effects of phen, ants and suit on attack: -0.0292116 (prev 1.28195)
+as.numeric(coefs1[2,8])*as.numeric(coefs1[9,8])*as.numeric(coefs1[18,8])+           #PC2->phen->attack->seeds_per_fl
+  as.numeric(coefs1[2,8])*1*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC2->phen->int->attack->seeds_per_fl
+  as.numeric(coefs2[4,8])*as.numeric(coefs1[10,8])*as.numeric(coefs1[18,8])+        #PC2->ants->attack->seeds_per_fl
+  as.numeric(coefs2[4,8])*1*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC2->ants->int->attack->seeds_per_fl
+  as.numeric(coefs1[6,8])*as.numeric(coefs1[11,8])*as.numeric(coefs1[18,8])+        #PC2->pldens_3->attack->seeds_per_fl
+  as.numeric(coefs1[6,8])*1*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])+      #PC2->pldens_3->int->attack->seeds_per_fl
+  as.numeric(coefs2[8,8])*as.numeric(coefs1[12,8])*as.numeric(coefs1[18,8])+        #PC2->phen_n3->attack->seeds_per_fl
+  as.numeric(coefs2[8,8])*1*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])       #PC2->phen_n3->int->attack->seeds_per_fl
+
+#(Very) indirect effects of PC2 on seeds per fl acting through effects of phen, ants on attack: 0.05478016
+as.numeric(coefs1[2,8])*as.numeric(coefs1[9,8])*as.numeric(coefs1[18,8])+           #PC2->phen->attack->seeds_per_fl
+  as.numeric(coefs1[2,8])*1*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])+      #PC2->phen->int->attack->seeds_per_fl
+  as.numeric(coefs2[4,8])*as.numeric(coefs1[10,8])*as.numeric(coefs1[18,8])+        #PC2->ants->attack->seeds_per_fl
+  as.numeric(coefs2[4,8])*1*as.numeric(coefs1[15,8])*as.numeric(coefs1[18,8])      #PC2->ants->int->attack->seeds_per_fl
+
+#(Very) indirect effects of PC2 on seeds per fl acting through effects of suit on attack: -0.08399176
+as.numeric(coefs1[6,8])*as.numeric(coefs1[11,8])*as.numeric(coefs1[18,8])+        #PC2->pldens_3->attack->seeds_per_fl
+  as.numeric(coefs1[6,8])*1*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])+      #PC2->pldens_3->int->attack->seeds_per_fl
+  as.numeric(coefs2[8,8])*as.numeric(coefs1[12,8])*as.numeric(coefs1[18,8])+        #PC2->phen_n3->attack->seeds_per_fl
+  as.numeric(coefs2[8,8])*1*as.numeric(coefs1[16,8])*as.numeric(coefs1[18,8])       #PC2->phen_n3->int->attack->seeds_per_fl
+
+# Did not make it work from here!
 
 # semEff
 
@@ -552,6 +552,10 @@ as.numeric(coefs1[2,8])*as.numeric(coefs1[9,8])*as.numeric(coefs1[18,8])+       
 easy_model<-list(lm(phen_int~PC1,subset(allplants_clean_rubra,!is.na(phen_int))),
                  glm(as.integer(attack)~phen_int+PC1,subset(allplants_clean_rubra,!is.na(phen_int)),family="binomial"),
                  lm(seeds_per_fl~phen_int+as.integer(attack)+PC1,subset(allplants_clean_rubra,!is.na(seeds_per_fl))))
+
+effects1<-semEff(easy_model) # Error in sort.int(x, na.last = na.last, decreasing = decreasing, ...) : 
+# 'x' must be atomic
+
 
 # Bootstrap model effects (takes a while...)
 system.time(easy_model_boot <- bootEff(easy_model, seed = 53908))
